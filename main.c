@@ -129,18 +129,19 @@ static void on_activate (GtkApplication *app) {
   }
 
   dimension dim;
-  dim.len = 7;
-  dim.dim = malloc(sizeof(int)*dim.len);
-  dim.dim[0] = 2;
-  dim.dim[1] = 2;
-  dim.dim[2] = 2;
-  dim.dim[3] = 2;
+  dim.len = 3;
+  dim.dim = malloc(sizeof(guint)*dim.len);
+  dim.dim[0] = 4;
+  dim.dim[1] = 4;
+  dim.dim[2] = 4;
+  /*dim.dim[3] = 4;
   dim.dim[4] = 2;
   dim.dim[5] = 2;
-  dim.dim[6] = 2;
+  dim.dim[6] = 2;*/
 
   GtkWidget* field = minesweeper_field_new();
   minesweeper_field_generate(MINESWEEPER_FIELD(field), dim);
+  minesweeper_field_populate(MINESWEEPER_FIELD(field), 1, 10);
   gtk_window_set_child(GTK_WINDOW(window), field);
 
   gtk_window_present (GTK_WINDOW (window));

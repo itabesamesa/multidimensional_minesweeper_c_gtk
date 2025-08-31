@@ -1,11 +1,11 @@
 CC=gcc # Flag for implicit rules
 CFLAGS=$(shell pkg-config --cflags gtk4)
-LDFLAGS=$(shell pkg-config --libs gtk4)
+LDFLAGS=$(shell pkg-config --libs gtk4) -lm
 #flags := $(shell pkg-config --cflags gtk4)
 #gtk_libs := $(shell pkg-config --libs gtk4)
 
 BINARY=main
-OBJECTS=minesweeper.o
+OBJECTS=minesweeper.o mtwister.o
 
 default: $(BINARY)
 
