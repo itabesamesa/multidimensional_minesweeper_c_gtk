@@ -12,96 +12,6 @@ enum {
   BOMB,
 };
 
-static int grid_spacing_multiplier = 10;
-static char covered_icon[20] = "./assets/covered.png";
-static char uncovered_icon[22] = "./assets/uncovered.png";
-
-typedef struct _cell {
-  short state; //0 covered, 1 uncovered, 2 covered flagged, 3 uncovered flagged
-short bomb; //0 not a bomb, 1 is a bomb
-  int abs;
-  int rel;
-} cell;
-
-typedef struct _field {
-  dimension dim;
-  int bombs;
-  int covered;
-  int uncovered;
-  cell* cells;
-} field;
-/*
-struct _CellClass {
-  GtkContainerClass parent_class;
-
-  void (* pressed)  (GtkButton *button);
-  void (* released) (GtkButton *button);
-  void (* clicked)  (GtkButton *button);
-  void (* enter)    (GtkButton *button);
-  void (* leave)    (GtkButton *button);
-};
-
-struct _Cell {
-  GtkContainer container;
-
-  GtkWidget *child;
-
-  guint in_button : 1;
-  guint button_down : 1;
-  guint is_bomb : 1;
-  guint state : 2;
-  guint abs;
-  guint rel;
-};
-
-guint          cell_get_type        (void);
-GtkWidget*     cell_new             (void);
-void           cell_clear           (cell* c);
-
-enum {
-  CELL_SIGNAL,
-  LAST_SIGNAL
-};
-
-static gint cell_signals[LAST_SIGNAL] = { 0 };
-
-static void cell_class_init (CellClass *class) {
-  GtkObjectClass *object_class;
-
-  object_class = (GtkObjectClass*) class;
-
-  cell_signals[CELL_SIGNAL] = gtk_signal_new ("cell",
-                                         GTK_RUN_FIRST,
-                                         object_class->type,
-                                         GTK_SIGNAL_OFFSET (CellClass, cell),
-                                         gtk_signal_default_marshaller, GTK_ARG_NONE, 0);
-
-
-  gtk_object_class_add_signals (object_class, tictactoe_signals, LAST_SIGNAL);
-
-  class->tictactoe = NULL;
-}
-
-guint cell_get_type () {
-  static guint cell_type = 0;
-
-  if (!cell_type) {
-    GtkTypeInfo cell_info = {
-      "Cell",
-      sizeof (Cell),
-      sizeof (CellClass),
-      (GtkClassInitFunc) cell_class_init,
-      (GtkObjectInitFunc) cell_init,
-      (GtkArgFunc) NULL,
-    };
-
-    cell_type = gtk_type_unique (gtk_vbox_get_type (), &cell_info);
-  }
-
-  return cell_type;
-}
-*/
-
 static void
 print_hello (GtkWidget *widget,
              gpointer   data)
@@ -129,11 +39,11 @@ static void on_activate (GtkApplication *app) {
   }
 
   dimension dim;
-  dim.len = 3;
+  dim.len = 2;
   dim.dim = malloc(sizeof(guint)*dim.len);
   dim.dim[0] = 4;
   dim.dim[1] = 4;
-  dim.dim[2] = 4;
+  //dim.dim[2] = 4;
   /*dim.dim[3] = 4;
   dim.dim[4] = 2;
   dim.dim[5] = 2;
@@ -141,7 +51,7 @@ static void on_activate (GtkApplication *app) {
 
   GtkWidget* field = minesweeper_field_new();
   minesweeper_field_generate(MINESWEEPER_FIELD(field), dim);
-  minesweeper_field_populate(MINESWEEPER_FIELD(field), 1, 10);
+  minesweeper_field_populate(MINESWEEPER_FIELD(field), 1, 5);
   gtk_window_set_child(GTK_WINDOW(window), field);
 
   gtk_window_present (GTK_WINDOW (window));

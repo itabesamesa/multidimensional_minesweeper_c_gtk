@@ -6,6 +6,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
+#include <math.h>
 #include "mtwister.h"
 
 typedef struct _dimension {
