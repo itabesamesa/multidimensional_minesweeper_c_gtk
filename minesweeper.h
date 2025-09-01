@@ -14,6 +14,9 @@ typedef struct _dimension {
   guint* dim;
 } dimension;
 
+guint num_len(gint num);
+dimension repeate_dim(guint value, guint amount);
+
 /*
  * Potentially, include other headers on which this header depends.
  */
@@ -44,7 +47,24 @@ guint minesweeper_cell_get_is_bomb(MinesweeperCell* cell);
 
 GtkWidget* minesweeper_field_new(void);
 
-void minesweeper_field_generate(MinesweeperField* field, dimension dim);
-void minesweeper_field_populate(MinesweeperField* field, guint seed, guint bombs);
+void minesweeper_field_game_running(MinesweeperField* field);
+void minesweeper_field_game_lost(MinesweeperField* field);
+void minesweeper_field_game_won(MinesweeperField* field);
+void minesweeper_field_game_forfeit(MinesweeperField* field);
+void minesweeper_field_game_paused(MinesweeperField* field);
+void minesweeper_field_generate(MinesweeperField* field);
+void minesweeper_field_populate(MinesweeperField* field);
+void minesweeper_field_set_dim(MinesweeperField* field, dimension dim);
+void minesweeper_field_set_seed(MinesweeperField* field, guint seed);
+void minesweeper_field_set_bombs(MinesweeperField* field, guint bombs);
+void minesweeper_field_set_tmpdim(MinesweeperField* field, dimension dim);
+void minesweeper_field_set_tmpseed(MinesweeperField* field, guint seed);
+void minesweeper_field_set_tmpbombs(MinesweeperField* field, guint bombs);
+void minesweeper_field_set_generate_populate(MinesweeperField* field, dimension dim, guint seed, guint bombs);
+void minesweeper_field_set_tmp(MinesweeperField* field, dimension dim, guint seed, guint bombs);
+void minesweeper_field_apply_tmp_generate_populate(MinesweeperField* field);
+void minesweeper_field_empty(MinesweeperField* field);
+void minesweeper_field_empty_apply_tmp_generate_populate(MinesweeperField* field);
+guint minesweeper_field_get_tmpseed(MinesweeperField* field);
 
 G_END_DECLS
