@@ -36,6 +36,9 @@ GtkWidget* minesweeper_cell_new(void);
 
 void minesweeper_cell_set_state(MinesweeperCell* cell, guint state);
 void minesweeper_cell_set_is_bomb(MinesweeperCell* cell, guint is_bomb);
+void minesweeper_cell_uncover(MinesweeperCell* cell);
+void minesweeper_cell_uncover_unless_flag(MinesweeperCell* cell);
+void minesweeper_cell_flag(MinesweeperCell* cell);
 
 guint minesweeper_cell_get_is_bomb(MinesweeperCell* cell);
 

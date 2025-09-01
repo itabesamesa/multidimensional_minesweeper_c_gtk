@@ -51,7 +51,7 @@ static void on_activate (GtkApplication *app) {
 
   GtkWidget* field = minesweeper_field_new();
   minesweeper_field_generate(MINESWEEPER_FIELD(field), dim);
-  minesweeper_field_populate(MINESWEEPER_FIELD(field), 1, 5);
+  minesweeper_field_populate(MINESWEEPER_FIELD(field), 1, 1);
   gtk_window_set_child(GTK_WINDOW(window), field);
 
   gtk_window_present (GTK_WINDOW (window));
