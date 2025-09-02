@@ -52,6 +52,7 @@ struct _MinesweeperCell {
 
   GtkWidget* child;
   GtkWidget* flag;
+  GtkWidget* highlight;
   MinesweeperField* field;
 
   //GtkActionHelper *action_helper;
@@ -114,6 +115,26 @@ void minesweeper_field_game_paused(MinesweeperField* field) {
   }
 }
 
+static gboolean minesweeper_field_execute_at(MinesweeperField* field, dimension loc, gboolean ((*func)(MinesweeperCell* cell, void* data)), void* data);
+static void minesweeper_field_execute_at_influenced_area(MinesweeperField* field, dimension loc, gboolean ((*func)(MinesweeperCell* cell, void* data)), void* data);
+
+static gboolean minesweeper_cell_add_influenced_highlight(MinesweeperCell* cell, void* data) {
+  gtk_image_set_from_file(GTK_IMAGE(cell->highlight), "./assets/influenced_highlight.png");
+}
+
+static void minesweeper_cell_highlight_influenced_area(MinesweeperCell* cell) {
+  minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_add_influenced_highlight, NULL);
+  gtk_image_set_from_file(GTK_IMAGE(cell->highlight), "./assets/current_highlight.png");
+}
+
+static gboolean minesweeper_cell_remove_influenced_highlight(MinesweeperCell* cell, void* data) {
+  gtk_image_clear(GTK_IMAGE(cell->highlight));
+}
+
+static void minesweeper_cell_unhighlight_influenced_area(MinesweeperCell* cell) {
+  minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_remove_influenced_highlight, NULL);
+}
+
 static void minesweeper_cell_init(MinesweeperCell* self) {
 	GtkWidget* widget = GTK_WIDGET(self);
 
@@ -123,17 +144,26 @@ static void minesweeper_cell_init(MinesweeperCell* self) {
   gtk_overlay_set_child(GTK_OVERLAY(self->child), gtk_image_new_from_file("./assets/covered.png"));
   gtk_image_set_pixel_size(GTK_IMAGE(gtk_overlay_get_child(GTK_OVERLAY(self->child))), 40);
 
+  self->highlight = gtk_image_new();
+  gtk_overlay_add_overlay(GTK_OVERLAY(self->child), self->highlight);
+
   GtkGesture* left_click = gtk_gesture_click_new();
   gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(left_click), 1);
   g_signal_connect_object(left_click, "pressed", G_CALLBACK(minesweeper_cell_uncover), self, G_CONNECT_SWAPPED);
-
   gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(left_click));
 
   GtkGesture* right_click = gtk_gesture_click_new();
   gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(right_click), 3);
   g_signal_connect_object(right_click, "pressed", G_CALLBACK(minesweeper_cell_flag), self, G_CONNECT_SWAPPED);
-
   gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(right_click));
+
+  GtkEventController* mouse_enter = gtk_event_controller_motion_new();
+  g_signal_connect_object(mouse_enter, "enter", G_CALLBACK(minesweeper_cell_highlight_influenced_area), self, G_CONNECT_SWAPPED);
+  gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(mouse_enter));
+
+  GtkEventController* mouse_leave = gtk_event_controller_motion_new();
+  g_signal_connect_object(mouse_leave, "leave", G_CALLBACK(minesweeper_cell_unhighlight_influenced_area), self, G_CONNECT_SWAPPED);
+  gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(mouse_leave));
 }
 
 static void minesweeper_cell_dispose(GObject *gobject) {
@@ -162,9 +192,6 @@ static void minesweeper_cell_class_init(MinesweeperCellClass *klass) {
 GtkWidget* minesweeper_cell_new(void) {
 	return g_object_new (MINESWEEPER_TYPE_CELL, NULL);
 }
-
-static gboolean minesweeper_field_execute_at(MinesweeperField* field, dimension loc, gboolean ((*func)(MinesweeperCell* cell, void* data)), void* data);
-static void minesweeper_field_execute_at_influenced_area(MinesweeperField* field, dimension loc, gboolean ((*func)(MinesweeperCell* cell, void* data)), void* data);
 
 static gboolean minesweeper_cell_inc_rel(MinesweeperCell* cell, void* data) {
   cell->rel++;
