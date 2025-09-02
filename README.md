@@ -6,6 +6,8 @@ Multidimensional minesweeper made with GTK4
 
 You have an n dimensional field. Your goal is to find every mine in it. The numbers indicate how many mines are in the surrounding volume. Have fun finding all the mines!
 
+![A screenshot of a running game](example_gaame.png)
+
 ### Controls
 
 <pre>
