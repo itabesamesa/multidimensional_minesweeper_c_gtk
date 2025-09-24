@@ -28,8 +28,6 @@ Then run make
 ```
 make
 ```
-```
-```
 
 And then
 
