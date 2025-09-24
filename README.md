@@ -36,10 +36,6 @@ And then
 ```
 ./main
 ```
-```
-```
-```
-```
 
 > [!WARNING]
 > I have only tested it on Arch Linux. I don't know if it would work on Windows or Mac or if I'd need to add some extra flags, to make it compile on other Linux distros
@@ -47,8 +43,8 @@ And then
 ## TODO
 
 - [ ] Toggle between delta and absolute mode
-- [ ] Fix random seed button
-- [ ] Highlight area of influence
+- [x] Fix random seed button
+- [x] Highlight area of influence
 - [ ] Add pause and forfeit functions
 
 ## Special thanks
