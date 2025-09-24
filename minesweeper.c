@@ -120,11 +120,13 @@ static void minesweeper_field_execute_at_influenced_area(MinesweeperField* field
 
 static gboolean minesweeper_cell_add_influenced_highlight(MinesweeperCell* cell, void* data) {
   gtk_image_set_from_file(GTK_IMAGE(cell->highlight), "./assets/influenced_highlight.png");
+  gtk_image_set_pixel_size(GTK_IMAGE(cell->highlight), 40);
 }
 
 static void minesweeper_cell_highlight_influenced_area(MinesweeperCell* cell) {
   minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_add_influenced_highlight, NULL);
   gtk_image_set_from_file(GTK_IMAGE(cell->highlight), "./assets/current_highlight.png");
+  gtk_image_set_pixel_size(GTK_IMAGE(cell->highlight), 40);
 }
 
 static gboolean minesweeper_cell_remove_influenced_highlight(MinesweeperCell* cell, void* data) {
@@ -277,6 +279,7 @@ void minesweeper_cell_set_state(MinesweeperCell* cell, guint state) {
   }
   if (state/2) {
     cell->flag = gtk_image_new_from_file("./assets/flag.png");
+    gtk_image_set_pixel_size(GTK_IMAGE(cell->flag), 40);
     gtk_overlay_add_overlay(GTK_OVERLAY(cell->child), cell->flag);
     minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_dec_rel, NULL);
   } else if (cell->state > 1) {
@@ -292,7 +295,9 @@ void minesweeper_cell_set_state(MinesweeperCell* cell, guint state) {
     gtk_image_set_from_file(GTK_IMAGE(gtk_overlay_get_child(GTK_OVERLAY(cell->child))), "./assets/uncovered.png");
     cell->field->uncovered_cells++;
     if (cell->is_bomb) {
-      gtk_overlay_add_overlay(GTK_OVERLAY(cell->child), gtk_image_new_from_file("./assets/bomb.png"));
+      GtkWidget* bomb = gtk_image_new_from_file("./assets/bomb.png");
+      gtk_image_set_pixel_size(GTK_IMAGE(bomb), 40/1.5);
+      gtk_overlay_add_overlay(GTK_OVERLAY(cell->child), bomb);
       minesweeper_field_game_lost(cell->field);
     } else {
       minesweeper_cell_set_display(cell);

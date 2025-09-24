@@ -1,17 +1,7 @@
 #include <time.h>
 #include "minesweeper.h"
 
-enum {
-  COVERED,
-  UNCOVERED,
-  COVERED_FLAG,
-  UNCOVERED_FLAG,
-};
-
-enum {
-  SAFE,
-  BOMB,
-};
+MTRand r;
 
 static gboolean check_entry_purity(GtkEntry* entry) {
   GtkEntryBuffer* entry_buf = gtk_entry_get_buffer(entry);
@@ -102,14 +92,13 @@ static void dim_from_entry(GtkEntry* entry, MinesweeperField* field) {
   }
 }
 
-
 typedef struct _new_seed_input {
   GtkEntry* entry;
   MinesweeperField* field;
 } new_seed_input;
 
 static void new_seed(new_seed_input* nsi) {
-  minesweeper_field_set_tmpseed(nsi->field, time(NULL));
+  minesweeper_field_set_tmpseed(nsi->field, genRandLong(&r));
   char* seed = malloc(sizeof(char)*num_len(minesweeper_field_get_tmpseed(nsi->field)));
   sprintf(seed, "%ld", minesweeper_field_get_tmpseed(nsi->field));
   printf("%s\n", seed);
@@ -119,6 +108,7 @@ static void new_seed(new_seed_input* nsi) {
 }
 
 static void on_activate (GtkApplication *app) {
+  r = seedRand(time(NULL));
   GtkWidget *window = gtk_application_window_new (app);
 
   GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
@@ -142,7 +132,7 @@ static void on_activate (GtkApplication *app) {
   GtkWidget* dim_label = gtk_label_new("Dimensions");
   gtk_box_append(GTK_BOX(dim_box), dim_label);
   GtkWidget* dim_entry = gtk_entry_new();
-  g_signal_connect(dim_entry, "activate", G_CALLBACK(dim_from_entry), field);
+  g_signal_connect(dim_entry, "changed", G_CALLBACK(dim_from_entry), field); //updates on EVERY key press now. "activate" would only do it on "enter"
   gtk_entry_set_placeholder_text(GTK_ENTRY(dim_entry), "4 4 4 4");
   dimension default_dim = repeate_dim(4, 4);
   minesweeper_field_set_tmpdim(MINESWEEPER_FIELD(field), default_dim);
@@ -155,7 +145,7 @@ static void on_activate (GtkApplication *app) {
   GtkWidget* seed_label = gtk_label_new("Seed");
   gtk_box_append(GTK_BOX(seed_box), seed_label);
   GtkWidget* seed_entry = gtk_entry_new();
-  g_signal_connect(seed_entry, "activate", G_CALLBACK(seed_from_entry), field);
+  g_signal_connect(seed_entry, "changed", G_CALLBACK(seed_from_entry), field);
   gtk_box_append(GTK_BOX(seed_box), seed_entry);
   gtk_entry_set_placeholder_text(GTK_ENTRY(seed_entry), "1");
   minesweeper_field_set_tmpseed(MINESWEEPER_FIELD(field), 1);
@@ -166,7 +156,7 @@ static void on_activate (GtkApplication *app) {
   GtkWidget* bombs_label = gtk_label_new("Bombs");
   gtk_box_append(GTK_BOX(bombs_box), bombs_label);
   GtkWidget* bombs_entry = gtk_entry_new();
-  g_signal_connect(bombs_entry, "activate", G_CALLBACK(bombs_from_entry), field);
+  g_signal_connect(bombs_entry, "changed", G_CALLBACK(bombs_from_entry), field);
   gtk_box_append(GTK_BOX(bombs_box), bombs_entry);
   gtk_entry_set_placeholder_text(GTK_ENTRY(bombs_entry), "20");
   minesweeper_field_set_tmpbombs(MINESWEEPER_FIELD(field), 20);
@@ -175,10 +165,10 @@ static void on_activate (GtkApplication *app) {
   gtk_box_append(GTK_BOX(settings_box), entry_box);
 
   GtkWidget* random_seed_button = gtk_button_new_with_label("Random seed");
-  new_seed_input nsi;
-  nsi.entry = GTK_ENTRY(seed_entry);
-  nsi.field = MINESWEEPER_FIELD(field);
-  g_signal_connect_swapped(random_seed_button, "clicked", G_CALLBACK(new_seed), &nsi);
+  new_seed_input* nsi = malloc(sizeof(new_seed_input));
+  nsi->entry = GTK_ENTRY(seed_entry);
+  nsi->field = MINESWEEPER_FIELD(field);
+  g_signal_connect_swapped(random_seed_button, "clicked", G_CALLBACK(new_seed), nsi);
   gtk_box_append(GTK_BOX(button_box), random_seed_button);
 
   GtkWidget* generate_button = gtk_button_new_with_label("Generate");
