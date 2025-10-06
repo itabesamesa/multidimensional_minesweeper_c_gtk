@@ -179,6 +179,11 @@ static void on_activate (GtkApplication *app) {
 
   gtk_box_append(GTK_BOX(box), settings_box);
 
+  GtkWidget* delta_check = gtk_check_button_new_with_label("Delta mode");
+  gtk_widget_set_halign(delta_check, GTK_ALIGN_CENTER);
+  g_signal_connect_swapped(delta_check, "toggled", G_CALLBACK(minesweeper_field_toggle_delta_mode), MINESWEEPER_FIELD(field));
+  gtk_box_append(GTK_BOX(box), delta_check);
+
   minesweeper_field_apply_tmp_generate_populate(MINESWEEPER_FIELD(field));
 
   gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(field_container), field);

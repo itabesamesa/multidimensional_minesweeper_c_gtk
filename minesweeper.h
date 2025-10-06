@@ -37,6 +37,7 @@ G_DECLARE_FINAL_TYPE (MinesweeperField, minesweeper_field, MINESWEEPER, FIELD, G
  */
 GtkWidget* minesweeper_cell_new(void);
 
+void minesweeper_cell_redraw(MinesweeperCell* cell);
 void minesweeper_cell_set_state(MinesweeperCell* cell, guint state);
 void minesweeper_cell_set_is_bomb(MinesweeperCell* cell, guint is_bomb);
 void minesweeper_cell_uncover(MinesweeperCell* cell);
@@ -54,6 +55,7 @@ void minesweeper_field_game_forfeit(MinesweeperField* field);
 void minesweeper_field_game_paused(MinesweeperField* field);
 void minesweeper_field_generate(MinesweeperField* field);
 void minesweeper_field_populate(MinesweeperField* field);
+void minesweeper_field_toggle_delta_mode(MinesweeperField* field);
 void minesweeper_field_set_dim(MinesweeperField* field, dimension dim);
 void minesweeper_field_set_seed(MinesweeperField* field, guint seed);
 void minesweeper_field_set_bombs(MinesweeperField* field, guint bombs);

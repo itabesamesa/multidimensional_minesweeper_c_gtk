@@ -40,7 +40,7 @@ And then
 
 ## TODO
 
-- [ ] Toggle between delta and absolute mode
+- [x] Toggle between delta and absolute mode
 - [x] Fix random seed button
 - [x] Highlight area of influence
 - [ ] Add pause and forfeit functions
