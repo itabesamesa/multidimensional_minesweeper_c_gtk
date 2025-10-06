@@ -33,12 +33,13 @@ static void dim_from_entry(GtkEntry* entry, MinesweeperField* field) {
   printf("\"%s\"\n", txt);
   guint txt_len = gtk_entry_buffer_get_length(entry_buf);
   gboolean pure = 1;
+  if (!txt_len) return;
   if (txt[0] == '^' || txt[txt_len-1] == '^') {
     printf("starting/ending carret\n");
     pure = 0;
   } else {
     for (guint i = 0; i < txt_len; i++) {
-      if ((txt[i] < '0' && txt[i] > '9') && txt[i] != ' ' && txt[i] != '^') {
+      if (!(txt[i] >= '0' && txt[i] <= '9') && txt[i] != ' ' && txt[i] != '^') {
         printf("contains non numbers/spaces/carrets: \"%c\"\n", txt[i]);
         pure = 0;
         break;

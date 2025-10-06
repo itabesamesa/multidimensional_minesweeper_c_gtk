@@ -22,14 +22,15 @@ struct _MinesweeperField {
   GtkWidget* overlay;
 
   dimension dim;
-  guint spacing_multiplier;
-  guint uncovered_cells;
   guint area;
+  guint seed;
   guint bombs;
   dimension tmpdim;
   guint tmpseed;
   guint tmpbombs;
-  guint seed;
+  guint spacing_multiplier;
+  guint uncovered_cells;
+  dimension loc;
   guint is_rel : 1;
   guint state : 3;
 };
@@ -158,7 +159,7 @@ static void minesweeper_cell_init(MinesweeperCell* self) {
   self->bomb = gtk_image_new_from_file("./assets/bomb.png");
   gtk_widget_set_parent(self->bomb, self->child);
   gtk_image_set_pixel_size(GTK_IMAGE(self->bomb), 40/1.5);
-gtk_widget_set_visible(self->bomb, 0);
+  gtk_widget_set_visible(self->bomb, 0);
 
   self->flag = gtk_image_new_from_file("./assets/flag.png");
   gtk_widget_set_parent(self->flag, self->child);
@@ -386,6 +387,15 @@ static void minesweeper_cell_copy_loc(MinesweeperCell* cell, dimension loc) {
   for (guint i = 0; i < loc.len; i++) cell->loc.dim[i] = loc.dim[i];
 }
 
+gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
+  MinesweeperField* field = (MinesweeperField*)user_data;
+  switch (keyval) {
+    case GDK_KEY_p:
+      minesweeper_field_game_paused(field);
+      break;
+  }
+}
+
 static void minesweeper_field_init(MinesweeperField* self) {
 	GtkWidget* widget = GTK_WIDGET(self);
 
@@ -395,6 +405,10 @@ static void minesweeper_field_init(MinesweeperField* self) {
   gtk_overlay_set_child(GTK_OVERLAY(self->child), gtk_grid_new());
 
   self->spacing_multiplier = 10;
+
+  GtkEventController* key_event = gtk_event_controller_key_new();
+  
+  g_signal_connect_object(key_event, "key-released", G_CALLBACK(minesweeper_field_key_pressed), self, G_CONNECT_SWAPPED);
 }
 
 static void minesweeper_field_dispose(GObject *gobject) {
@@ -404,6 +418,7 @@ static void minesweeper_field_dispose(GObject *gobject) {
 
   free(self->dim.dim);
   free(self->tmpdim.dim);
+  free(self->loc.dim);
 
 	G_OBJECT_CLASS(minesweeper_field_parent_class)->dispose (gobject);
 }
@@ -429,6 +444,12 @@ void minesweeper_field_set_dim(MinesweeperField* field, dimension dim) {
   field->dim.len = dim.len;
   field->dim.dim = realloc(field->dim.dim, sizeof(guint)*field->dim.len);
   for (guint i = 0; i < field->dim.len; i++) field->dim.dim[i] = dim.dim[i];
+}
+
+void minesweeper_field_init_loc(MinesweeperField* field) {
+  field->loc.len = field->dim.len;
+  field->loc.dim = realloc(field->loc.dim, sizeof(guint)*field->dim.len);
+  for (guint i = 0; i < field->dim.len; i++) field->loc.dim[i] = 0;
 }
 
 void minesweeper_field_set_tmpdim(MinesweeperField* field, dimension dim) {
@@ -607,6 +628,7 @@ void minesweeper_field_toggle_delta_mode(MinesweeperField* field) {
 
 void minesweeper_field_set_generate_populate(MinesweeperField* field, dimension dim, guint seed, guint bombs) {
   minesweeper_field_set_dim(field, dim);
+  minesweeper_field_init_loc(field);
   minesweeper_field_set_seed(field, seed);
   minesweeper_field_set_bombs(field, bombs);
   minesweeper_field_generate(field);
