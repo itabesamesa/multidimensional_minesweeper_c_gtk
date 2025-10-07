@@ -2,6 +2,7 @@
 #include "minesweeper.h"
 
 MTRand r;
+GtkWidget* field;
 
 static gboolean check_entry_purity(GtkEntry* entry) {
   GtkEntryBuffer* entry_buf = gtk_entry_get_buffer(entry);
@@ -106,6 +107,17 @@ static void new_seed(new_seed_input* nsi) {
   gtk_entry_buffer_delete_text(gtk_entry_get_buffer(nsi->entry), 0, -1);
   gtk_entry_set_placeholder_text(nsi->entry, seed);
   free(seed);
+  gtk_widget_grab_focus(GTK_WIDGET(field));
+}
+
+static void generate_button_press(MinesweeperField* field) {
+  minesweeper_field_empty_apply_tmp_generate_populate(field);
+  gtk_widget_grab_focus(GTK_WIDGET(field));
+}
+
+static void delta_check_toggle(MinesweeperField* field) {
+  minesweeper_field_toggle_delta_mode(field);
+  gtk_widget_grab_focus(GTK_WIDGET(field));
 }
 
 static void on_activate (GtkApplication *app) {
@@ -125,7 +137,7 @@ static void on_activate (GtkApplication *app) {
   gtk_widget_set_vexpand(field_container, 1);
   gtk_widget_set_halign(field_container, GTK_ALIGN_FILL);
   gtk_widget_set_valign(field_container, GTK_ALIGN_FILL);
-  GtkWidget* field = minesweeper_field_new();
+  field = minesweeper_field_new();
   gtk_widget_set_halign(field, GTK_ALIGN_CENTER);
 
   GtkWidget* dim_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
@@ -173,7 +185,7 @@ static void on_activate (GtkApplication *app) {
   gtk_box_append(GTK_BOX(button_box), random_seed_button);
 
   GtkWidget* generate_button = gtk_button_new_with_label("Generate");
-  g_signal_connect_swapped(generate_button, "clicked", G_CALLBACK(minesweeper_field_empty_apply_tmp_generate_populate), MINESWEEPER_FIELD(field));
+  g_signal_connect_swapped(generate_button, "clicked", G_CALLBACK(generate_button_press), MINESWEEPER_FIELD(field));
   gtk_box_append(GTK_BOX(button_box), generate_button);
 
   gtk_box_append(GTK_BOX(settings_box), button_box);
@@ -182,7 +194,7 @@ static void on_activate (GtkApplication *app) {
 
   GtkWidget* delta_check = gtk_check_button_new_with_label("Delta mode");
   gtk_widget_set_halign(delta_check, GTK_ALIGN_CENTER);
-  g_signal_connect_swapped(delta_check, "toggled", G_CALLBACK(minesweeper_field_toggle_delta_mode), MINESWEEPER_FIELD(field));
+  g_signal_connect_swapped(delta_check, "toggled", G_CALLBACK(delta_check_toggle), MINESWEEPER_FIELD(field));
   gtk_box_append(GTK_BOX(box), delta_check);
 
   minesweeper_field_apply_tmp_generate_populate(MINESWEEPER_FIELD(field));

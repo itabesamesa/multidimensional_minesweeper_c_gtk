@@ -80,15 +80,15 @@ static gboolean minesweeper_cell_uncover_wrapper(MinesweeperCell* cell, void* da
 
 void minesweeper_field_game_running(MinesweeperField* field) {
   if (field->state) {
-    gtk_overlay_remove_overlay(GTK_OVERLAY(field->child), field->overlay);
+    gtk_widget_set_visible(field->overlay, 0);
     field->state = RUNNING;
   }
 }
 
 void minesweeper_field_game_lost(MinesweeperField* field) {
   if (!field->state) {
-    field->overlay = gtk_label_new("Game Over\nYou lost");
-    gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);
+    gtk_label_set_label(GTK_LABEL(field->overlay), "Game Over\nYou lost");
+    gtk_widget_set_visible(field->overlay, 1);
     field->state = LOST;
     minesweeper_field_execute_at_all(field, minesweeper_cell_uncover_wrapper, NULL);
   }
@@ -96,25 +96,31 @@ void minesweeper_field_game_lost(MinesweeperField* field) {
 
 void minesweeper_field_game_won(MinesweeperField* field) {
   if (!field->state) {
-    field->overlay = gtk_label_new("Game Over\nYou won");
-    gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);
+    gtk_label_set_label(GTK_LABEL(field->overlay), "Game Over\nYou won");
+    gtk_widget_set_visible(field->overlay, 1);
     field->state = WON;
   }
 }
 
 void minesweeper_field_game_forfeit(MinesweeperField* field) {
   if (!field->state) {
-    field->overlay = gtk_label_new("Game Over\nYou forfeit");
-    gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);
+    gtk_label_set_label(GTK_LABEL(field->overlay), "Game Over\nYou forfeit");
+    gtk_widget_set_visible(field->overlay, 1);
     field->state = FORFEIT;
   }
 }
 
 void minesweeper_field_game_paused(MinesweeperField* field) {
+  printf("holla\n");
+  printf("%d\n", field->state);
   if (!field->state) {
-    field->overlay = gtk_label_new("Game Paused");
-    gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);
+    printf("Game is running\n");
+    gtk_label_set_label(GTK_LABEL(field->overlay), "Game Paused");
+    printf("Game is running\n");
+    gtk_widget_set_visible(field->overlay, 1);
     field->state = PAUSED;
+  } else if (field->state == PAUSED) {
+    minesweeper_field_game_running(field);
   }
 }
 
@@ -389,11 +395,14 @@ static void minesweeper_cell_copy_loc(MinesweeperCell* cell, dimension loc) {
 
 gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
   MinesweeperField* field = (MinesweeperField*)user_data;
+  printf("ppppppppppppppppppppppppppppppppppppppppppppppppppp\n");
   switch (keyval) {
     case GDK_KEY_p:
       minesweeper_field_game_paused(field);
+      printf("ppppppppppppppppppppppppppppppppppppppppppppppppppp\n");
       break;
   }
+  return 1;
 }
 
 static void minesweeper_field_init(MinesweeperField* self) {
@@ -404,11 +413,20 @@ static void minesweeper_field_init(MinesweeperField* self) {
 
   gtk_overlay_set_child(GTK_OVERLAY(self->child), gtk_grid_new());
 
+  self->overlay = gtk_label_new(":3");
+  gtk_overlay_add_overlay(GTK_OVERLAY(self->child), self->overlay);
+  gtk_widget_set_visible(self->overlay, 0);
+
+  gtk_widget_set_focusable(widget, 1);
+  gtk_widget_set_focus_on_click(widget, 1);
+  gtk_widget_grab_focus(widget);
+
   self->spacing_multiplier = 10;
 
   GtkEventController* key_event = gtk_event_controller_key_new();
   
-  g_signal_connect_object(key_event, "key-released", G_CALLBACK(minesweeper_field_key_pressed), self, G_CONNECT_SWAPPED);
+  g_signal_connect_object(key_event, "key-pressed", G_CALLBACK(minesweeper_field_key_pressed), self, G_CONNECT_SWAPPED);
+  gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(key_event));
 }
 
 static void minesweeper_field_dispose(GObject *gobject) {
