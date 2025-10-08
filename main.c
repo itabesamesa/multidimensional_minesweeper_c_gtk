@@ -120,6 +120,10 @@ static void delta_check_toggle(MinesweeperField* field) {
   gtk_widget_grab_focus(GTK_WIDGET(field));
 }
 
+static void grab_focus_wrapper(GtkEntry* entry, GtkWidget* field) {
+  gtk_widget_grab_focus(field);
+}
+
 static void on_activate (GtkApplication *app) {
   r = seedRand(time(NULL));
   GtkWidget *window = gtk_application_window_new (app);
@@ -146,6 +150,7 @@ static void on_activate (GtkApplication *app) {
   gtk_box_append(GTK_BOX(dim_box), dim_label);
   GtkWidget* dim_entry = gtk_entry_new();
   g_signal_connect(dim_entry, "changed", G_CALLBACK(dim_from_entry), field); //updates on EVERY key press now. "activate" would only do it on "enter"
+  g_signal_connect(dim_entry, "activate", G_CALLBACK(grab_focus_wrapper), field);
   gtk_entry_set_placeholder_text(GTK_ENTRY(dim_entry), "4 4 4 4");
   dimension default_dim = repeate_dim(4, 4);
   minesweeper_field_set_tmpdim(MINESWEEPER_FIELD(field), default_dim);
@@ -159,6 +164,7 @@ static void on_activate (GtkApplication *app) {
   gtk_box_append(GTK_BOX(seed_box), seed_label);
   GtkWidget* seed_entry = gtk_entry_new();
   g_signal_connect(seed_entry, "changed", G_CALLBACK(seed_from_entry), field);
+  g_signal_connect(seed_entry, "activate", G_CALLBACK(grab_focus_wrapper), field);
   gtk_box_append(GTK_BOX(seed_box), seed_entry);
   gtk_entry_set_placeholder_text(GTK_ENTRY(seed_entry), "1");
   minesweeper_field_set_tmpseed(MINESWEEPER_FIELD(field), 1);
@@ -170,6 +176,7 @@ static void on_activate (GtkApplication *app) {
   gtk_box_append(GTK_BOX(bombs_box), bombs_label);
   GtkWidget* bombs_entry = gtk_entry_new();
   g_signal_connect(bombs_entry, "changed", G_CALLBACK(bombs_from_entry), field);
+  g_signal_connect(bombs_entry, "activate", G_CALLBACK(grab_focus_wrapper), field);
   gtk_box_append(GTK_BOX(bombs_box), bombs_entry);
   gtk_entry_set_placeholder_text(GTK_ENTRY(bombs_entry), "20");
   minesweeper_field_set_tmpbombs(MINESWEEPER_FIELD(field), 20);

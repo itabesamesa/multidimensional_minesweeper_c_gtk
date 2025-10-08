@@ -20,6 +20,7 @@ struct _MinesweeperField {
 
   GtkWidget* child;
   GtkWidget* overlay;
+  GtkEventController* key_event;
 
   dimension dim;
   guint seed;
@@ -32,7 +33,7 @@ struct _MinesweeperField {
   guint uncovered_cells;
   guint spacing_multiplier;
   gboolean is_rel;
-  guint state;
+  gint state;
 };
 
 enum {
@@ -104,9 +105,12 @@ void minesweeper_field_game_won(MinesweeperField* field) {
 }
 
 void minesweeper_field_game_forfeit(MinesweeperField* field) {
+  printf("%d\n", field->state);
   if (!field->state) {
     gtk_label_set_label(GTK_LABEL(field->overlay), "Game Over\nYou forfeit");
+    printf("setted label\n");
     gtk_widget_set_visible(field->overlay, 1);
+    printf("invisibleded");
     field->state = FORFEIT;
   }
 }
@@ -396,12 +400,15 @@ static void minesweeper_cell_copy_loc(MinesweeperCell* cell, dimension loc) {
 
 gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
   MinesweeperField* field = (MinesweeperField*)user_data;
-  printf("ppppppppppppppppppppppppppppppppppppppppppppppppppp\n");
-  switch (keyval) {
-    case GDK_KEY_p:
-      minesweeper_field_game_paused(field);
-      printf("ppppppppppppppppppppppppppppppppppppppppppppppppppp\n");
-      break;
+  if (state == GDK_NO_MODIFIER_MASK) {
+    switch (keyval) {
+      case GDK_KEY_p:
+        printf("ppppppppppppppppppppppppppppppppppppppppppppppppppp\n");
+        minesweeper_field_game_paused(field);
+        //minesweeper_field_game_forfeit(field);
+        printf("ppppppppppppppppppppppppppppppppppppppppppppppppppp\n");
+        break;
+    }
   }
   return 1;
 }
@@ -417,7 +424,7 @@ static void minesweeper_field_init(MinesweeperField* self) {
   self->overlay = gtk_label_new(":3");
   gtk_overlay_add_overlay(GTK_OVERLAY(self->child), self->overlay);
   self->state = RUNNING;
-  //gtk_widget_set_visible(self->overlay, 0);
+  gtk_widget_set_visible(self->overlay, 0);
 
   gtk_widget_set_focusable(widget, 1);
   gtk_widget_set_focus_on_click(widget, 1);
@@ -426,10 +433,10 @@ static void minesweeper_field_init(MinesweeperField* self) {
   self->spacing_multiplier = 10;
   self->is_rel = 0;
 
-  GtkEventController* key_event = gtk_event_controller_key_new();
+  self->key_event = gtk_event_controller_key_new();
   
-  g_signal_connect_object(key_event, "key-pressed", G_CALLBACK(minesweeper_field_key_pressed), self, G_CONNECT_SWAPPED);
-  gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(key_event));
+  g_signal_connect(self->key_event, "key-pressed", G_CALLBACK(minesweeper_field_key_pressed), self);
+  gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(self->key_event));
 }
 
 static void minesweeper_field_dispose(GObject *gobject) {
