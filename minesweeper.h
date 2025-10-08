@@ -56,6 +56,7 @@ void minesweeper_field_game_paused(MinesweeperField* field);
 void minesweeper_field_generate(MinesweeperField* field);
 void minesweeper_field_populate(MinesweeperField* field);
 void minesweeper_field_toggle_delta_mode(MinesweeperField* field);
+void minesweeper_field_toggle_obfuscate_on_pause(MinesweeperField* field);
 void minesweeper_field_set_dim(MinesweeperField* field, dimension dim);
 void minesweeper_field_set_seed(MinesweeperField* field, guint seed);
 void minesweeper_field_set_bombs(MinesweeperField* field, guint bombs);

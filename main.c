@@ -122,6 +122,7 @@ static void delta_check_toggle(MinesweeperField* field) {
 
 static void grab_focus_wrapper(GtkEntry* entry, GtkWidget* field) {
   gtk_widget_grab_focus(field);
+  gtk_widget_grab_focus(GTK_WIDGET(field));
 }
 
 static void on_activate (GtkApplication *app) {
@@ -136,6 +137,9 @@ static void on_activate (GtkApplication *app) {
   GtkWidget* entry_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
   GtkWidget* button_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
   gtk_widget_set_valign(button_box, GTK_ALIGN_CENTER);
+  GtkWidget* toggle_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_set_halign(toggle_box, GTK_ALIGN_CENTER);
+
   GtkWidget* field_container = gtk_scrolled_window_new();
   gtk_widget_set_hexpand(field_container, 1);
   gtk_widget_set_vexpand(field_container, 1);
@@ -200,9 +204,16 @@ static void on_activate (GtkApplication *app) {
   gtk_box_append(GTK_BOX(box), settings_box);
 
   GtkWidget* delta_check = gtk_check_button_new_with_label("Delta mode");
-  gtk_widget_set_halign(delta_check, GTK_ALIGN_CENTER);
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(delta_check), 1);
   g_signal_connect_swapped(delta_check, "toggled", G_CALLBACK(delta_check_toggle), MINESWEEPER_FIELD(field));
-  gtk_box_append(GTK_BOX(box), delta_check);
+  gtk_box_append(GTK_BOX(toggle_box), delta_check);
+
+  GtkWidget* obfuscate_check = gtk_check_button_new_with_label("Obfuscate on pause");
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(obfuscate_check), 1);
+  g_signal_connect_swapped(obfuscate_check, "toggled", G_CALLBACK(minesweeper_field_toggle_obfuscate_on_pause), MINESWEEPER_FIELD(field));
+  gtk_box_append(GTK_BOX(toggle_box), obfuscate_check);
+
+  gtk_box_append(GTK_BOX(box), toggle_box);
 
   minesweeper_field_apply_tmp_generate_populate(MINESWEEPER_FIELD(field));
 
