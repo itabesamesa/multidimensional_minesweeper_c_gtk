@@ -413,9 +413,15 @@ static gboolean minesweeper_field_move_down_in(MinesweeperField* field, int dim)
 static gboolean minesweeper_field_move_down_in(MinesweeperField* field, int dim) {
   printf("move down in\n");
   if (field->loc.len > dim) {
+    printf("%d\n", dim);
+    printf("%d\n", field->loc.len);
+    printf("%d\n", field->loc.dim[dim]);
+    printf("%d\n", field->dim.dim[dim]);
     if (field->loc.dim[dim]+1 == field->dim.dim[dim]) {
+      printf("noooo\n");
       if (minesweeper_field_move_down_in(field, dim+2)) field->loc.dim[dim] = 0;
     } else {
+      printf("yeeah\n");
       field->loc.dim[dim]++;
     }
     return TRUE;
