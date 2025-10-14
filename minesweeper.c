@@ -395,6 +395,39 @@ static void minesweeper_cell_copy_loc(MinesweeperCell* cell, dimension loc) {
   for (guint i = 0; i < loc.len; i++) cell->loc.dim[i] = loc.dim[i];
 }
 
+static gboolean minesweeper_field_move_up_in(MinesweeperField* field, int dim);
+static gboolean minesweeper_field_move_up_in(MinesweeperField* field, int dim) {
+  printf("move up in\n");
+  if (field->loc.len > dim) {
+    if (field->loc.dim[dim] == 0) {
+      if (minesweeper_field_move_up_in(field, dim+2)) field->loc.dim[dim] = field->dim.dim[dim]-1;
+    } else {
+      field->loc.dim[dim]--;
+    }
+    return TRUE;
+  }
+  return FALSE;
+}
+
+static gboolean minesweeper_field_move_down_in(MinesweeperField* field, int dim);
+static gboolean minesweeper_field_move_down_in(MinesweeperField* field, int dim) {
+  printf("move down in\n");
+  if (field->loc.len > dim) {
+    if (field->loc.dim[dim]+1 == field->dim.dim[dim]) {
+      if (minesweeper_field_move_down_in(field, dim+2)) field->loc.dim[dim] = 0;
+    } else {
+      field->loc.dim[dim]++;
+    }
+    return TRUE;
+  }
+  return FALSE;
+}
+
+static gboolean minesweeper_cell_highlight_influenced_area_wrapper(MinesweeperCell* cell, void* data) {
+  minesweeper_cell_highlight_influenced_area(cell);
+  return 1;
+}
+
 gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
   MinesweeperField* field = (MinesweeperField*)user_data;
   switch (state) {
@@ -402,23 +435,31 @@ gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval
       switch (keyval) {
         case GDK_KEY_rightarrow:
         case GDK_KEY_l:
+          minesweeper_field_move_down_in(field, 0);
           break;
         case GDK_KEY_leftarrow:
         case GDK_KEY_h:
+          minesweeper_field_move_up_in(field, 0);
           break;
         case GDK_KEY_uparrow:
         case GDK_KEY_k:
+          minesweeper_field_move_up_in(field, 1);
           break;
         case GDK_KEY_downarrow:
         case GDK_KEY_j:
+          minesweeper_field_move_down_in(field, 1);
           break;
         case GDK_KEY_d:
+          minesweeper_field_move_down_in(field, 2);
           break;
         case GDK_KEY_a:
+          minesweeper_field_move_up_in(field, 2);
           break;
         case GDK_KEY_w:
+          minesweeper_field_move_up_in(field, 3);
           break;
         case GDK_KEY_s:
+          minesweeper_field_move_down_in(field, 3);
           break;
         case GDK_KEY_m:
         case GDK_KEY_e:
@@ -450,16 +491,23 @@ gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval
     case GDK_CONTROL_MASK: {
       switch (keyval) {
         case GDK_KEY_l:
+          minesweeper_field_move_down_in(field, 2);
           break;
         case GDK_KEY_h:
+          minesweeper_field_move_up_in(field, 2);
           break;
         case GDK_KEY_k:
+          minesweeper_field_move_up_in(field, 3);
           break;
         case GDK_KEY_j:
+          minesweeper_field_move_down_in(field, 3);
           break;
       }
     }
   }
+  for (int i = 0; i < field->tmpdim.len-1; i++) printf("%d ", field->tmpdim.dim[i]); printf("%d\n", field->tmpdim.dim[field->tmpdim.len-1]);
+  for (int i = 0; i < field->loc.len-1; i++) printf("%d ", field->loc.dim[i]); printf("%d\n", field->loc.dim[field->loc.len-1]);
+  minesweeper_field_execute_at(field, field->loc, minesweeper_cell_highlight_influenced_area_wrapper, NULL);
   return 1;
 }
 
@@ -611,6 +659,9 @@ void minesweeper_field_generate(MinesweeperField* field) {
   }
   free(loc.dim);
   field->uncovered_cells = 0;
+  field->loc.len = field->dim.len;
+  field->loc.dim = malloc(sizeof(guint)*field->dim.len);
+  for (int i = 0; i < field->dim.len; i++) field->loc.dim[i] = 0;
 }
 
 static gboolean minesweeper_cell_place_mine(MinesweeperCell* cell, void* data) {
@@ -741,6 +792,12 @@ void minesweeper_field_empty(MinesweeperField* field) {
     gtk_grid_remove(GTK_GRID(grid), iter);
     iter = next;
   }
+  free(field->dim.dim);
+  field->dim.len = 0;
+  //free(field->tmpdim.dim);
+  //field->tmpdim.len = 0;
+  free(field->loc.dim);
+  field->loc.len = 0;
   //gtk_widget_unrealize(grid);
   //gtk_overlay_remove_overlay(GTK_OVERLAY(field->child), grid);
 	//g_clear_pointer(&grid, gtk_widget_unparent);
