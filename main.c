@@ -3,25 +3,27 @@
 
 MTRand r;
 
-static gboolean check_entry_purity(GtkEntry* entry) {
+static const char* check_entry_purity(GtkEntry* entry) {
   GtkEntryBuffer* entry_buf = gtk_entry_get_buffer(entry);
   const char* txt = gtk_entry_buffer_get_text(entry_buf);
-  printf("\"%s\"\n", txt);
-  for (guint i = 0; i < gtk_entry_buffer_get_length(entry_buf); i++) if (txt[i] <= '0' && txt[i] >= '9') return 0;
-  return 1;
+  if (txt[0] == '\0') txt = gtk_entry_get_placeholder_text(entry);
+  for (guint i = 0; i < strlen(txt); i++) if (!(txt[i] >= '0' && txt[i] <= '9')) return NULL;
+  return txt;
 }
 
 static void seed_from_entry(GtkEntry* entry, void* field) {
-  if (check_entry_purity(entry)) {
-    minesweeper_field_set_tmpseed((MinesweeperField*)field, atoi(gtk_entry_buffer_get_text(gtk_entry_get_buffer(entry))));
+  const char* txt = check_entry_purity(entry);
+  if (txt) {
+    minesweeper_field_set_tmpseed((MinesweeperField*)field, atoi(txt));
   } else {
     printf("wrong input for seed\n");
   }
 }
 
 static void bombs_from_entry(GtkEntry* entry, void* field) {
-  if (check_entry_purity(entry)) {
-    minesweeper_field_set_tmpbombs((MinesweeperField*)field, atoi(gtk_entry_buffer_get_text(gtk_entry_get_buffer(entry))));
+  const char* txt = check_entry_purity(entry);
+  if (txt) {
+    minesweeper_field_set_tmpbombs((MinesweeperField*)field, atoi(txt));
   } else {
     printf("wrong input for bombs\n");
   }
@@ -31,7 +33,11 @@ static void dim_from_entry(GtkEntry* entry, MinesweeperField* field) {
   GtkEntryBuffer* entry_buf = gtk_entry_get_buffer(entry);
   char* txt = gtk_entry_buffer_get_text(entry_buf);
   printf("\"%s\"\n", txt);
-  guint txt_len = gtk_entry_buffer_get_length(entry_buf);
+  if (txt[0] == '\0') {
+    txt = gtk_entry_get_placeholder_text(entry);
+    printf("\"%s\"\n", txt);
+  }
+  guint txt_len = strlen(txt);
   gboolean pure = 1;
   if (txt[0] == '^' || txt[txt_len-1] == '^') {
     printf("starting/ending carret\n");
@@ -145,6 +151,8 @@ static void on_activate (GtkApplication *app) {
   GtkWidget* seed_label = gtk_label_new("Seed");
   gtk_box_append(GTK_BOX(seed_box), seed_label);
   GtkWidget* seed_entry = gtk_entry_new();
+  gtk_entry_set_input_purpose(GTK_ENTRY(seed_entry), GTK_INPUT_PURPOSE_DIGITS);
+  gtk_entry_set_input_hints(GTK_ENTRY(seed_entry), GTK_INPUT_PURPOSE_DIGITS);
   g_signal_connect(seed_entry, "changed", G_CALLBACK(seed_from_entry), field);
   gtk_box_append(GTK_BOX(seed_box), seed_entry);
   gtk_entry_set_placeholder_text(GTK_ENTRY(seed_entry), "1");
@@ -156,6 +164,8 @@ static void on_activate (GtkApplication *app) {
   GtkWidget* bombs_label = gtk_label_new("Bombs");
   gtk_box_append(GTK_BOX(bombs_box), bombs_label);
   GtkWidget* bombs_entry = gtk_entry_new();
+  gtk_entry_set_input_purpose(GTK_ENTRY(bombs_entry), GTK_INPUT_PURPOSE_DIGITS);
+  gtk_entry_set_input_hints(GTK_ENTRY(bombs_entry), GTK_INPUT_PURPOSE_DIGITS);
   g_signal_connect(bombs_entry, "changed", G_CALLBACK(bombs_from_entry), field);
   gtk_box_append(GTK_BOX(bombs_box), bombs_entry);
   gtk_entry_set_placeholder_text(GTK_ENTRY(bombs_entry), "20");
