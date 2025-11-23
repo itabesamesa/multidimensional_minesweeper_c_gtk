@@ -20,18 +20,21 @@ struct _MinesweeperField {
 
   GtkWidget* child;
   GtkWidget* overlay;
+  GtkEventController* key_event;
 
   dimension dim;
-  guint spacing_multiplier;
-  guint uncovered_cells;
-  guint area;
+  guint seed;
   guint bombs;
   dimension tmpdim;
   guint tmpseed;
   guint tmpbombs;
-  guint seed;
-  guint is_rel : 1;
-  guint state : 3;
+  dimension loc;
+  guint area;
+  guint uncovered_cells;
+  guint spacing_multiplier;
+  gboolean is_rel;
+  gboolean obfuscate_on_pause;
+  gint state;
 };
 
 enum {
@@ -39,7 +42,8 @@ enum {
   PAUSED,
   LOST,
   WON,
-  FORFEIT
+  FORFEIT,
+  NEW_GAME
 };
 
 G_DEFINE_TYPE (MinesweeperField, minesweeper_field, GTK_TYPE_WIDGET)
@@ -51,11 +55,11 @@ struct _MinesweeperCell {
   GtkWidget parent_instance;
 
   GtkWidget* child;
+  GtkWidget* value;
+  GtkWidget* bomb;
   GtkWidget* flag;
   GtkWidget* highlight;
   MinesweeperField* field;
-
-  //GtkActionHelper *action_helper;
 
   dimension loc;
   char* display;
@@ -76,16 +80,14 @@ static gboolean minesweeper_cell_uncover_wrapper(MinesweeperCell* cell, void* da
 }
 
 void minesweeper_field_game_running(MinesweeperField* field) {
-  if (field->state) {
-    gtk_overlay_remove_overlay(GTK_OVERLAY(field->child), field->overlay);
-    field->state = RUNNING;
-  }
+  gtk_widget_set_visible(field->overlay, 0);
+  field->state = RUNNING;
 }
 
 void minesweeper_field_game_lost(MinesweeperField* field) {
   if (!field->state) {
-    field->overlay = gtk_label_new("Game Over\nYou lost");
-    gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);
+    gtk_label_set_label(GTK_LABEL(field->overlay), "Game Over\nYou lost");
+    gtk_widget_set_visible(field->overlay, 1);
     field->state = LOST;
     minesweeper_field_execute_at_all(field, minesweeper_cell_uncover_wrapper, NULL);
   }
@@ -93,25 +95,33 @@ void minesweeper_field_game_lost(MinesweeperField* field) {
 
 void minesweeper_field_game_won(MinesweeperField* field) {
   if (!field->state) {
-    field->overlay = gtk_label_new("Game Over\nYou won");
-    gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);
+    gtk_label_set_label(GTK_LABEL(field->overlay), "Game Over\nYou won");
+    gtk_widget_set_visible(field->overlay, 1);
     field->state = WON;
   }
 }
 
 void minesweeper_field_game_forfeit(MinesweeperField* field) {
+  printf("%d\n", field->state);
   if (!field->state) {
-    field->overlay = gtk_label_new("Game Over\nYou forfeit");
-    gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);
+    gtk_label_set_label(GTK_LABEL(field->overlay), "Game Over\nYou forfeit");
+    gtk_widget_set_visible(field->overlay, 1);
     field->state = FORFEIT;
   }
 }
 
 void minesweeper_field_game_paused(MinesweeperField* field) {
-  if (!field->state) {
-    field->overlay = gtk_label_new("Game Paused");
-    gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);
+  printf("%d\n", field->state);
+  if (field->state == RUNNING) {
+    gtk_label_set_label(GTK_LABEL(field->overlay), "Game Paused");
+    gtk_widget_set_visible(field->overlay, 1);
+    if (field->obfuscate_on_pause) {
+      gtk_widget_set_visible(gtk_overlay_get_child(GTK_OVERLAY(field->child)), 0);
+    }
     field->state = PAUSED;
+  } else if (field->state == PAUSED) {
+    gtk_widget_set_visible(gtk_overlay_get_child(GTK_OVERLAY(field->child)), 1);
+    minesweeper_field_game_running(field);
   }
 }
 
@@ -148,6 +158,20 @@ static void minesweeper_cell_init(MinesweeperCell* self) {
 
   self->highlight = gtk_image_new();
   gtk_overlay_add_overlay(GTK_OVERLAY(self->child), self->highlight);
+
+  self->value = gtk_label_new(":3");
+  gtk_widget_set_parent(self->value, self->child);
+  gtk_widget_set_visible(self->value, 0);
+
+  self->bomb = gtk_image_new_from_file("./assets/bomb.png");
+  gtk_widget_set_parent(self->bomb, self->child);
+  gtk_image_set_pixel_size(GTK_IMAGE(self->bomb), 40/1.5);
+  gtk_widget_set_visible(self->bomb, 0);
+
+  self->flag = gtk_image_new_from_file("./assets/flag.png");
+  gtk_widget_set_parent(self->flag, self->child);
+  gtk_image_set_pixel_size(GTK_IMAGE(self->flag), 40);
+  gtk_widget_set_visible(self->flag, 0);
 
   GtkGesture* left_click = gtk_gesture_click_new();
   gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(left_click), 1);
@@ -208,10 +232,18 @@ static gboolean minesweeper_cell_dec_rel(MinesweeperCell* cell, void* data) {
 static void minesweeper_cell_set_display(MinesweeperCell* cell) {
   if (cell->field->is_rel) {
     cell->display = realloc(cell->display, sizeof(char)*num_len(cell->rel));
-    sprintf(cell->display, "%d", cell->rel);
+    if (cell->rel) {
+      sprintf(cell->display, "%d", cell->rel);
+    } else {
+      cell->display[0] = '\0';
+    }
   } else {
     cell->display = realloc(cell->display, sizeof(char)*num_len(cell->abs));
-    sprintf(cell->display, "%d", cell->abs);
+    if (cell->abs) {
+      sprintf(cell->display, "%d", cell->abs);
+    } else {
+      cell->display[0] = '\0';
+    }
   }
 }
 
@@ -273,35 +305,15 @@ static void minesweeper_field_execute_at_influenced_area(MinesweeperField* field
   free(loc2.dim);
 }
 
-void minesweeper_cell_set_state(MinesweeperCell* cell, guint state) {
-  if (cell->state == state || state > 3) {
-    return;
-  }
-  if (state/2) {
-    cell->flag = gtk_image_new_from_file("./assets/flag.png");
-    gtk_image_set_pixel_size(GTK_IMAGE(cell->flag), 40);
-    gtk_overlay_add_overlay(GTK_OVERLAY(cell->child), cell->flag);
-    minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_dec_rel, NULL);
-  } else if (cell->state > 1) {
-    gtk_overlay_remove_overlay(GTK_OVERLAY(cell->child), cell->flag);
-    minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_inc_rel, NULL);
-  }
-  if (state%2 == cell->state%2) {
-    cell->state = state;
-    return;
-  }
-  cell->state = state;
-  if (state%2) {
+void minesweeper_cell_redraw(MinesweeperCell* cell) {
+  if (cell->state%2) {
     gtk_image_set_from_file(GTK_IMAGE(gtk_overlay_get_child(GTK_OVERLAY(cell->child))), "./assets/uncovered.png");
-    cell->field->uncovered_cells++;
     if (cell->is_bomb) {
-      GtkWidget* bomb = gtk_image_new_from_file("./assets/bomb.png");
-      gtk_image_set_pixel_size(GTK_IMAGE(bomb), 40/1.5);
-      gtk_overlay_add_overlay(GTK_OVERLAY(cell->child), bomb);
+      gtk_widget_set_visible(cell->bomb, 1);
       minesweeper_field_game_lost(cell->field);
     } else {
       minesweeper_cell_set_display(cell);
-      gtk_overlay_add_overlay(GTK_OVERLAY(cell->child), gtk_label_new(cell->display));
+      gtk_label_set_label(GTK_LABEL(cell->value), cell->display);
       if (!cell->abs) minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_uncover_unless_flag_wrapper, NULL);
       if (!(cell->field->area-cell->field->bombs-cell->field->uncovered_cells)) minesweeper_field_game_won(cell->field);
     }
@@ -310,18 +322,51 @@ void minesweeper_cell_set_state(MinesweeperCell* cell, guint state) {
   }
 }
 
+static gboolean minesweeper_cell_redraw_wrapper(MinesweeperCell* cell, void* data) {
+  minesweeper_cell_redraw(cell);
+  return 1;
+}
+
+void minesweeper_cell_set_state(MinesweeperCell* cell, guint state) {
+  if (cell->state == state || state > 3) {
+    return;
+  }
+  if (state/2 != cell->state/2) {
+    if (state/2) {
+      gtk_widget_set_visible(cell->flag, 1);
+      if (state%2) gtk_widget_set_visible(cell->value, 0);
+      minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_dec_rel, NULL);
+    } else if (cell->state > 1) {
+      gtk_widget_set_visible(cell->flag, 0);
+      if (state%2) gtk_widget_set_visible(cell->value, 1);
+      minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_inc_rel, NULL);
+    }
+  }
+  if (state%2 == cell->state%2) {
+    cell->state = state;
+    return;
+  } else {
+    cell->field->uncovered_cells++;
+    if (!cell->is_bomb) gtk_widget_set_visible(cell->value, 1);
+  }
+  cell->state = state;
+  minesweeper_cell_redraw(cell);
+}
+
 void minesweeper_cell_uncover(MinesweeperCell* cell) {
-  if (!(cell->state%2)) {
+  if (!(cell->state%2 || cell->field->state)) {
     minesweeper_cell_set_state(cell, cell->state+1);
   }
 }
 
 void minesweeper_cell_flag(MinesweeperCell* cell) {
+  if (cell->field->state) return;
   if (cell->state/2) {
     minesweeper_cell_set_state(cell, cell->state-2);
   } else {
     minesweeper_cell_set_state(cell, cell->state+2);
   }
+  if (cell->field->is_rel) minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_redraw_wrapper, NULL);
 }
 
 void minesweeper_cell_set_is_bomb(MinesweeperCell* cell, guint is_bomb) {
@@ -350,6 +395,128 @@ static void minesweeper_cell_copy_loc(MinesweeperCell* cell, dimension loc) {
   for (guint i = 0; i < loc.len; i++) cell->loc.dim[i] = loc.dim[i];
 }
 
+static gboolean minesweeper_field_move_up_in(MinesweeperField* field, int dim);
+static gboolean minesweeper_field_move_up_in(MinesweeperField* field, int dim) {
+  printf("move up in\n");
+  if (field->loc.len > dim) {
+    if (field->loc.dim[dim] == 0) {
+      if (minesweeper_field_move_up_in(field, dim+2)) field->loc.dim[dim] = field->dim.dim[dim]-1;
+    } else {
+      field->loc.dim[dim]--;
+    }
+    return TRUE;
+  }
+  return FALSE;
+}
+
+static gboolean minesweeper_field_move_down_in(MinesweeperField* field, int dim);
+static gboolean minesweeper_field_move_down_in(MinesweeperField* field, int dim) {
+  printf("move down in\n");
+  if (field->loc.len > dim) {
+    printf("%d\n", dim);
+    printf("%d\n", field->loc.len);
+    printf("%d\n", field->loc.dim[dim]);
+    printf("%d\n", field->dim.dim[dim]);
+    if (field->loc.dim[dim]+1 == field->dim.dim[dim]) {
+      printf("noooo\n");
+      if (minesweeper_field_move_down_in(field, dim+2)) field->loc.dim[dim] = 0;
+    } else {
+      printf("yeeah\n");
+      field->loc.dim[dim]++;
+    }
+    return TRUE;
+  }
+  return FALSE;
+}
+
+static gboolean minesweeper_cell_highlight_influenced_area_wrapper(MinesweeperCell* cell, void* data) {
+  minesweeper_cell_highlight_influenced_area(cell);
+  return 1;
+}
+
+gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
+  MinesweeperField* field = (MinesweeperField*)user_data;
+  switch (state) {
+    case GDK_NO_MODIFIER_MASK: {
+      switch (keyval) {
+        case GDK_KEY_rightarrow:
+        case GDK_KEY_l:
+          minesweeper_field_move_down_in(field, 0);
+          break;
+        case GDK_KEY_leftarrow:
+        case GDK_KEY_h:
+          minesweeper_field_move_up_in(field, 0);
+          break;
+        case GDK_KEY_uparrow:
+        case GDK_KEY_k:
+          minesweeper_field_move_up_in(field, 1);
+          break;
+        case GDK_KEY_downarrow:
+        case GDK_KEY_j:
+          minesweeper_field_move_down_in(field, 1);
+          break;
+        case GDK_KEY_d:
+          minesweeper_field_move_down_in(field, 2);
+          break;
+        case GDK_KEY_a:
+          minesweeper_field_move_up_in(field, 2);
+          break;
+        case GDK_KEY_w:
+          minesweeper_field_move_up_in(field, 3);
+          break;
+        case GDK_KEY_s:
+          minesweeper_field_move_down_in(field, 3);
+          break;
+        case GDK_KEY_m:
+        case GDK_KEY_e:
+          break;
+        case GDK_KEY_M:
+        case GDK_KEY_E:
+          break;
+        case GDK_KEY_space:
+          break;
+        case GDK_KEY_f:
+          break;
+        case GDK_KEY_u:
+          break;
+        case GDK_KEY_g:
+          break;
+        case GDK_KEY_p:
+          minesweeper_field_game_paused(field);
+          break;
+        case GDK_KEY_n:
+          break;
+        case GDK_KEY_c:
+          break;
+        case GDK_KEY_i:
+          break;
+        case GDK_KEY_q:
+          break;
+      }
+    }
+    case GDK_CONTROL_MASK: {
+      switch (keyval) {
+        case GDK_KEY_l:
+          minesweeper_field_move_down_in(field, 2);
+          break;
+        case GDK_KEY_h:
+          minesweeper_field_move_up_in(field, 2);
+          break;
+        case GDK_KEY_k:
+          minesweeper_field_move_up_in(field, 3);
+          break;
+        case GDK_KEY_j:
+          minesweeper_field_move_down_in(field, 3);
+          break;
+      }
+    }
+  }
+  for (int i = 0; i < field->tmpdim.len-1; i++) printf("%d ", field->tmpdim.dim[i]); printf("%d\n", field->tmpdim.dim[field->tmpdim.len-1]);
+  for (int i = 0; i < field->loc.len-1; i++) printf("%d ", field->loc.dim[i]); printf("%d\n", field->loc.dim[field->loc.len-1]);
+  minesweeper_field_execute_at(field, field->loc, minesweeper_cell_highlight_influenced_area_wrapper, NULL);
+  return 1;
+}
+
 static void minesweeper_field_init(MinesweeperField* self) {
 	GtkWidget* widget = GTK_WIDGET(self);
 
@@ -358,7 +525,25 @@ static void minesweeper_field_init(MinesweeperField* self) {
 
   gtk_overlay_set_child(GTK_OVERLAY(self->child), gtk_grid_new());
 
+  self->overlay = gtk_label_new(":3");
+  gtk_widget_set_halign(self->overlay, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(self->overlay, GTK_ALIGN_CENTER);
+  gtk_overlay_add_overlay(GTK_OVERLAY(self->child), self->overlay);
+  self->state = RUNNING;
+  self->obfuscate_on_pause = TRUE;
+  gtk_widget_set_visible(self->overlay, 0);
+
+  gtk_widget_set_focusable(widget, 1);
+  gtk_widget_set_focus_on_click(widget, 1);
+  gtk_widget_grab_focus(widget);
+
   self->spacing_multiplier = 10;
+  self->is_rel = TRUE;
+
+  self->key_event = gtk_event_controller_key_new();
+  
+  g_signal_connect(self->key_event, "key-pressed", G_CALLBACK(minesweeper_field_key_pressed), self);
+  gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(self->key_event));
 }
 
 static void minesweeper_field_dispose(GObject *gobject) {
@@ -368,6 +553,7 @@ static void minesweeper_field_dispose(GObject *gobject) {
 
   free(self->dim.dim);
   free(self->tmpdim.dim);
+  free(self->loc.dim);
 
 	G_OBJECT_CLASS(minesweeper_field_parent_class)->dispose (gobject);
 }
@@ -395,10 +581,24 @@ void minesweeper_field_set_dim(MinesweeperField* field, dimension dim) {
   for (guint i = 0; i < field->dim.len; i++) field->dim.dim[i] = dim.dim[i];
 }
 
+void minesweeper_field_init_loc(MinesweeperField* field) {
+  field->loc.len = field->dim.len;
+  field->loc.dim = realloc(field->loc.dim, sizeof(guint)*field->dim.len);
+  for (guint i = 0; i < field->dim.len; i++) field->loc.dim[i] = 0;
+}
+
 void minesweeper_field_set_tmpdim(MinesweeperField* field, dimension dim) {
   field->tmpdim.len = dim.len;
   field->tmpdim.dim = realloc(field->tmpdim.dim, sizeof(guint)*field->tmpdim.len);
   for (guint i = 0; i < field->tmpdim.len; i++) field->tmpdim.dim[i] = dim.dim[i];
+}
+
+static guint minesweeper_field_calc_area(dimension dim) {
+  guint factor = 1;
+  for (guint i = 0; i < dim.len; i++) {
+    factor *= dim.dim[i];
+  }
+  return factor;
 }
 
 static void minesweeper_field_generate_recursor(MinesweeperField* field, GtkWidget* grid, gint depth, dimension loc, guint spacing_multiplier) {
@@ -434,6 +634,7 @@ static void minesweeper_field_generate_recursor(MinesweeperField* field, GtkWidg
 
 void minesweeper_field_generate(MinesweeperField* field) {
   if (field->dim.len == 0) return;
+  field->area = minesweeper_field_calc_area(field->dim);
   GtkWidget* grid = gtk_overlay_get_child(GTK_OVERLAY(field->child));
   dimension loc;
   loc.len = field->dim.len;
@@ -463,14 +664,10 @@ void minesweeper_field_generate(MinesweeperField* field) {
     }
   }
   free(loc.dim);
-}
-
-static guint minesweeper_field_calc_area(dimension dim) {
-  guint factor = 1;
-  for (guint i = 0; i < dim.len; i++) {
-    factor *= dim.dim[i];
-  }
-  return factor;
+  field->uncovered_cells = 0;
+  field->loc.len = field->dim.len;
+  field->loc.dim = malloc(sizeof(guint)*field->dim.len);
+  for (int i = 0; i < field->dim.len; i++) field->loc.dim[i] = 0;
 }
 
 static gboolean minesweeper_cell_place_mine(MinesweeperCell* cell, void* data) {
@@ -536,7 +733,6 @@ void minesweeper_field_set_tmpbombs(MinesweeperField* field, guint bombs) {
 
 void minesweeper_field_populate(MinesweeperField* field) {
   if (!field->dim.len) return;
-  field->area = minesweeper_field_calc_area(field->dim);
   //if (field->bombs > field->area) return;
   dimension loc;
   loc.len = field->dim.len;
@@ -562,10 +758,22 @@ void minesweeper_field_populate(MinesweeperField* field) {
       minesweeper_field_execute_at_influenced_area(field, loc, minesweeper_cell_dec_all, NULL);
     }
   }
+  field->state = RUNNING;
+}
+
+void minesweeper_field_toggle_delta_mode(MinesweeperField* field) {
+  field->is_rel = (field->is_rel)?0:1;
+  minesweeper_field_execute_at_all(field, minesweeper_cell_redraw_wrapper, NULL);
+}
+
+void minesweeper_field_toggle_obfuscate_on_pause(MinesweeperField* field) {
+  field->obfuscate_on_pause = (field->obfuscate_on_pause)?0:1;
+  if (field->state == PAUSED) gtk_widget_set_visible(gtk_overlay_get_child(GTK_OVERLAY(field->child)), !field->obfuscate_on_pause);
 }
 
 void minesweeper_field_set_generate_populate(MinesweeperField* field, dimension dim, guint seed, guint bombs) {
   minesweeper_field_set_dim(field, dim);
+  minesweeper_field_init_loc(field);
   minesweeper_field_set_seed(field, seed);
   minesweeper_field_set_bombs(field, bombs);
   minesweeper_field_generate(field);
@@ -584,13 +792,42 @@ void minesweeper_field_apply_tmp_generate_populate(MinesweeperField* field) {
 
 void minesweeper_field_empty(MinesweeperField* field) {
   GtkWidget* grid = gtk_overlay_get_child(GTK_OVERLAY(field->child));
-	g_clear_pointer(&grid, gtk_widget_unparent);
+  GtkWidget *iter = gtk_widget_get_first_child(grid);
+  while (iter != NULL) {
+    GtkWidget *next = gtk_widget_get_next_sibling(iter);
+    gtk_grid_remove(GTK_GRID(grid), iter);
+    iter = next;
+  }
+  free(field->dim.dim);
+  field->dim.len = 0;
+  //free(field->tmpdim.dim);
+  //field->tmpdim.len = 0;
+  free(field->loc.dim);
+  field->loc.len = 0;
+  //gtk_widget_unrealize(grid);
+  //gtk_overlay_remove_overlay(GTK_OVERLAY(field->child), grid);
+	//g_clear_pointer(&grid, gtk_widget_unparent);
+  /*printf("%p\n", field->overlay);
+  gtk_overlay_remove_overlay(GTK_OVERLAY(field->child), field->overlay);
+  printf("%p\n", field->overlay);
+  gtk_overlay_set_child(GTK_OVERLAY(field->child), NULL);
+  printf("%p\n", field->overlay);
   gtk_overlay_set_child(GTK_OVERLAY(field->child), gtk_grid_new());
+  printf("%p\n", field->overlay);
+  field->overlay = gtk_label_new(":3");
+  printf("%p\n", field->overlay);
+  gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);*/
+  /*gtk_widget_unparent(field->child);
+  field->child = gtk_overlay_new();
+  gtk_overlay_set_child(GTK_OVERLAY(field->child), gtk_grid_new());
+  field->overlay = gtk_label_new(":3");
+  gtk_overlay_add_overlay(GTK_OVERLAY(field->child), field->overlay);
+  printf("%d\n", field->state);*/
 }
 
 void minesweeper_field_empty_apply_tmp_generate_populate(MinesweeperField* field) {
-  minesweeper_field_game_running(field);
   minesweeper_field_empty(field);
+  minesweeper_field_game_running(field);
   minesweeper_field_apply_tmp_generate_populate(field);
 }
 

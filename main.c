@@ -2,6 +2,7 @@
 #include "minesweeper.h"
 
 MTRand r;
+GtkWidget* field;
 
 static const char* check_entry_purity(GtkEntry* entry) {
   GtkEntryBuffer* entry_buf = gtk_entry_get_buffer(entry);
@@ -39,12 +40,13 @@ static void dim_from_entry(GtkEntry* entry, MinesweeperField* field) {
   }
   guint txt_len = strlen(txt);
   gboolean pure = 1;
+  if (!txt_len) return;
   if (txt[0] == '^' || txt[txt_len-1] == '^') {
     printf("starting/ending carret\n");
     pure = 0;
   } else {
     for (guint i = 0; i < txt_len; i++) {
-      if ((txt[i] < '0' && txt[i] > '9') && txt[i] != ' ' && txt[i] != '^') {
+      if (!(txt[i] >= '0' && txt[i] <= '9') && txt[i] != ' ' && txt[i] != '^') {
         printf("contains non numbers/spaces/carrets: \"%c\"\n", txt[i]);
         pure = 0;
         break;
@@ -111,6 +113,22 @@ static void new_seed(new_seed_input* nsi) {
   gtk_entry_buffer_delete_text(gtk_entry_get_buffer(nsi->entry), 0, -1);
   gtk_entry_set_placeholder_text(nsi->entry, seed);
   free(seed);
+  gtk_widget_grab_focus(GTK_WIDGET(field));
+}
+
+static void generate_button_press(MinesweeperField* field) {
+  minesweeper_field_empty_apply_tmp_generate_populate(field);
+  gtk_widget_grab_focus(GTK_WIDGET(field));
+}
+
+static void delta_check_toggle(MinesweeperField* field) {
+  minesweeper_field_toggle_delta_mode(field);
+  gtk_widget_grab_focus(GTK_WIDGET(field));
+}
+
+static void grab_focus_wrapper(GtkEntry* entry, GtkWidget* field) {
+  gtk_widget_grab_focus(field);
+  gtk_widget_grab_focus(GTK_WIDGET(field));
 }
 
 static void on_activate (GtkApplication *app) {
@@ -125,12 +143,15 @@ static void on_activate (GtkApplication *app) {
   GtkWidget* entry_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
   GtkWidget* button_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
   gtk_widget_set_valign(button_box, GTK_ALIGN_CENTER);
+  GtkWidget* toggle_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_set_halign(toggle_box, GTK_ALIGN_CENTER);
+
   GtkWidget* field_container = gtk_scrolled_window_new();
   gtk_widget_set_hexpand(field_container, 1);
   gtk_widget_set_vexpand(field_container, 1);
   gtk_widget_set_halign(field_container, GTK_ALIGN_FILL);
   gtk_widget_set_valign(field_container, GTK_ALIGN_FILL);
-  GtkWidget* field = minesweeper_field_new();
+  field = minesweeper_field_new();
   gtk_widget_set_halign(field, GTK_ALIGN_CENTER);
 
   GtkWidget* dim_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
@@ -139,6 +160,7 @@ static void on_activate (GtkApplication *app) {
   gtk_box_append(GTK_BOX(dim_box), dim_label);
   GtkWidget* dim_entry = gtk_entry_new();
   g_signal_connect(dim_entry, "changed", G_CALLBACK(dim_from_entry), field); //updates on EVERY key press now. "activate" would only do it on "enter"
+  g_signal_connect(dim_entry, "activate", G_CALLBACK(grab_focus_wrapper), field);
   gtk_entry_set_placeholder_text(GTK_ENTRY(dim_entry), "4 4 4 4");
   dimension default_dim = repeate_dim(4, 4);
   minesweeper_field_set_tmpdim(MINESWEEPER_FIELD(field), default_dim);
@@ -154,6 +176,7 @@ static void on_activate (GtkApplication *app) {
   gtk_entry_set_input_purpose(GTK_ENTRY(seed_entry), GTK_INPUT_PURPOSE_DIGITS);
   gtk_entry_set_input_hints(GTK_ENTRY(seed_entry), GTK_INPUT_PURPOSE_DIGITS);
   g_signal_connect(seed_entry, "changed", G_CALLBACK(seed_from_entry), field);
+  g_signal_connect(seed_entry, "activate", G_CALLBACK(grab_focus_wrapper), field);
   gtk_box_append(GTK_BOX(seed_box), seed_entry);
   gtk_entry_set_placeholder_text(GTK_ENTRY(seed_entry), "1");
   minesweeper_field_set_tmpseed(MINESWEEPER_FIELD(field), 1);
@@ -167,6 +190,7 @@ static void on_activate (GtkApplication *app) {
   gtk_entry_set_input_purpose(GTK_ENTRY(bombs_entry), GTK_INPUT_PURPOSE_DIGITS);
   gtk_entry_set_input_hints(GTK_ENTRY(bombs_entry), GTK_INPUT_PURPOSE_DIGITS);
   g_signal_connect(bombs_entry, "changed", G_CALLBACK(bombs_from_entry), field);
+  g_signal_connect(bombs_entry, "activate", G_CALLBACK(grab_focus_wrapper), field);
   gtk_box_append(GTK_BOX(bombs_box), bombs_entry);
   gtk_entry_set_placeholder_text(GTK_ENTRY(bombs_entry), "20");
   minesweeper_field_set_tmpbombs(MINESWEEPER_FIELD(field), 20);
@@ -182,12 +206,24 @@ static void on_activate (GtkApplication *app) {
   gtk_box_append(GTK_BOX(button_box), random_seed_button);
 
   GtkWidget* generate_button = gtk_button_new_with_label("Generate");
-  g_signal_connect_swapped(generate_button, "clicked", G_CALLBACK(minesweeper_field_empty_apply_tmp_generate_populate), MINESWEEPER_FIELD(field));
+  g_signal_connect_swapped(generate_button, "clicked", G_CALLBACK(generate_button_press), MINESWEEPER_FIELD(field));
   gtk_box_append(GTK_BOX(button_box), generate_button);
 
   gtk_box_append(GTK_BOX(settings_box), button_box);
 
   gtk_box_append(GTK_BOX(box), settings_box);
+
+  GtkWidget* delta_check = gtk_check_button_new_with_label("Delta mode");
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(delta_check), 1);
+  g_signal_connect_swapped(delta_check, "toggled", G_CALLBACK(delta_check_toggle), MINESWEEPER_FIELD(field));
+  gtk_box_append(GTK_BOX(toggle_box), delta_check);
+
+  GtkWidget* obfuscate_check = gtk_check_button_new_with_label("Obfuscate on pause");
+  gtk_check_button_set_active(GTK_CHECK_BUTTON(obfuscate_check), 1);
+  g_signal_connect_swapped(obfuscate_check, "toggled", G_CALLBACK(minesweeper_field_toggle_obfuscate_on_pause), MINESWEEPER_FIELD(field));
+  gtk_box_append(GTK_BOX(toggle_box), obfuscate_check);
+
+  gtk_box_append(GTK_BOX(box), toggle_box);
 
   minesweeper_field_apply_tmp_generate_populate(MINESWEEPER_FIELD(field));
 
