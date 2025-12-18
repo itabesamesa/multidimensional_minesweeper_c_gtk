@@ -231,14 +231,14 @@ static gboolean minesweeper_cell_dec_rel(MinesweeperCell* cell, void* data) {
 
 static void minesweeper_cell_set_display(MinesweeperCell* cell) {
   if (cell->field->is_rel) {
-    cell->display = realloc(cell->display, sizeof(char)*num_len(cell->rel));
+    cell->display = realloc(cell->display, sizeof(char)*(num_len(cell->rel)+1));
     if (cell->rel) {
       sprintf(cell->display, "%d", cell->rel);
     } else {
       cell->display[0] = '\0';
     }
   } else {
-    cell->display = realloc(cell->display, sizeof(char)*num_len(cell->abs));
+    cell->display = realloc(cell->display, sizeof(char)*(num_len(cell->abs)+1));
     if (cell->abs) {
       sprintf(cell->display, "%d", cell->abs);
     } else {
@@ -417,12 +417,12 @@ static gboolean minesweeper_field_move_down_in(MinesweeperField* field, int dim)
     printf("%d\n", field->loc.len);
     printf("%d\n", field->loc.dim[dim]);
     printf("%d\n", field->dim.dim[dim]);
-    if (field->loc.dim[dim]+1 == field->dim.dim[dim]) {
-      printf("noooo\n");
-      if (minesweeper_field_move_down_in(field, dim+2)) field->loc.dim[dim] = 0;
-    } else {
+    if (field->loc.dim[dim]+1 < field->dim.dim[dim]) {
       printf("yeeah\n");
       field->loc.dim[dim]++;
+    } else {
+      printf("noooo\n");
+      if (minesweeper_field_move_down_in(field, dim+2)) field->loc.dim[dim] = 0;
     }
     return TRUE;
   }
@@ -431,27 +431,53 @@ static gboolean minesweeper_field_move_down_in(MinesweeperField* field, int dim)
 
 static gboolean minesweeper_cell_highlight_influenced_area_wrapper(MinesweeperCell* cell, void* data) {
   minesweeper_cell_highlight_influenced_area(cell);
-  return 1;
+  return TRUE;
 }
+static gboolean minesweeper_cell_unhighlight_influenced_area_wrapper(MinesweeperCell* cell, void* data) {
+  minesweeper_cell_unhighlight_influenced_area(cell);
+  return TRUE;
+}
+
 
 gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
   MinesweeperField* field = (MinesweeperField*)user_data;
+  minesweeper_field_execute_at(field, field->loc, minesweeper_cell_unhighlight_influenced_area_wrapper, NULL);
+  gboolean redraw = TRUE;
   switch (state) {
-    case GDK_NO_MODIFIER_MASK: {
+    case GDK_CONTROL_MASK: {
       switch (keyval) {
-        case GDK_KEY_rightarrow:
+        case GDK_KEY_l:
+          minesweeper_field_move_down_in(field, 2);
+          break;
+        case GDK_KEY_h:
+          minesweeper_field_move_up_in(field, 2);
+          break;
+        case GDK_KEY_k:
+          minesweeper_field_move_up_in(field, 3);
+          break;
+        case GDK_KEY_j:
+          minesweeper_field_move_down_in(field, 3);
+          break;
+        default:
+          //redraw = FALSE;
+          break;
+      }
+    }
+    default: {
+      switch (keyval) {
+        case GDK_KEY_Right:
         case GDK_KEY_l:
           minesweeper_field_move_down_in(field, 0);
           break;
-        case GDK_KEY_leftarrow:
+        case GDK_KEY_Left:
         case GDK_KEY_h:
           minesweeper_field_move_up_in(field, 0);
           break;
-        case GDK_KEY_uparrow:
+        case GDK_KEY_Up:
         case GDK_KEY_k:
           minesweeper_field_move_up_in(field, 1);
           break;
-        case GDK_KEY_downarrow:
+        case GDK_KEY_Down:
         case GDK_KEY_j:
           minesweeper_field_move_down_in(field, 1);
           break;
@@ -492,28 +518,17 @@ gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval
           break;
         case GDK_KEY_q:
           break;
-      }
-    }
-    case GDK_CONTROL_MASK: {
-      switch (keyval) {
-        case GDK_KEY_l:
-          minesweeper_field_move_down_in(field, 2);
-          break;
-        case GDK_KEY_h:
-          minesweeper_field_move_up_in(field, 2);
-          break;
-        case GDK_KEY_k:
-          minesweeper_field_move_up_in(field, 3);
-          break;
-        case GDK_KEY_j:
-          minesweeper_field_move_down_in(field, 3);
+        default:
+          //redraw = FALSE;
           break;
       }
     }
   }
-  for (int i = 0; i < field->tmpdim.len-1; i++) printf("%d ", field->tmpdim.dim[i]); printf("%d\n", field->tmpdim.dim[field->tmpdim.len-1]);
-  for (int i = 0; i < field->loc.len-1; i++) printf("%d ", field->loc.dim[i]); printf("%d\n", field->loc.dim[field->loc.len-1]);
-  minesweeper_field_execute_at(field, field->loc, minesweeper_cell_highlight_influenced_area_wrapper, NULL);
+  if (redraw) {
+    for (int i = 0; i < field->tmpdim.len-1; i++) printf("%d ", field->tmpdim.dim[i]); printf("%d\n", field->tmpdim.dim[field->tmpdim.len-1]);
+    for (int i = 0; i < field->loc.len-1; i++) printf("%d ", field->loc.dim[i]); printf("%d\n", field->loc.dim[field->loc.len-1]);
+    minesweeper_field_execute_at(field, field->loc, minesweeper_cell_highlight_influenced_area_wrapper, NULL);
+  }
   return 1;
 }
 
@@ -541,7 +556,11 @@ static void minesweeper_field_init(MinesweeperField* self) {
   self->is_rel = TRUE;
 
   self->key_event = gtk_event_controller_key_new();
-  
+
+  self->dim.len = 0;
+  self->tmpdim.len = 0;
+  self->loc.len = 0;
+
   g_signal_connect(self->key_event, "key-pressed", G_CALLBACK(minesweeper_field_key_pressed), self);
   gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(self->key_event));
 }
@@ -576,20 +595,32 @@ GtkWidget* minesweeper_field_new (void) {
 }
 
 void minesweeper_field_set_dim(MinesweeperField* field, dimension dim) {
+  if (field->dim.len) {
+    field->dim.dim = realloc(field->dim.dim, sizeof(guint)*dim.len);
+  } else {
+    field->dim.dim = malloc(sizeof(guint)*dim.len);
+  }
   field->dim.len = dim.len;
-  field->dim.dim = realloc(field->dim.dim, sizeof(guint)*field->dim.len);
   for (guint i = 0; i < field->dim.len; i++) field->dim.dim[i] = dim.dim[i];
 }
 
 void minesweeper_field_init_loc(MinesweeperField* field) {
+  if (field->loc.len) {
+    field->loc.dim = realloc(field->loc.dim, sizeof(guint)*field->dim.len);
+  } else {
+    field->loc.dim = malloc(sizeof(guint)*field->dim.len);
+  }
   field->loc.len = field->dim.len;
-  field->loc.dim = realloc(field->loc.dim, sizeof(guint)*field->dim.len);
   for (guint i = 0; i < field->dim.len; i++) field->loc.dim[i] = 0;
 }
 
 void minesweeper_field_set_tmpdim(MinesweeperField* field, dimension dim) {
+  if (field->tmpdim.len) {
+    field->tmpdim.dim = realloc(field->tmpdim.dim, sizeof(guint)*dim.len);
+  } else {
+    field->tmpdim.dim = malloc(sizeof(guint)*dim.len);
+  }
   field->tmpdim.len = dim.len;
-  field->tmpdim.dim = realloc(field->tmpdim.dim, sizeof(guint)*field->tmpdim.len);
   for (guint i = 0; i < field->tmpdim.len; i++) field->tmpdim.dim[i] = dim.dim[i];
 }
 
