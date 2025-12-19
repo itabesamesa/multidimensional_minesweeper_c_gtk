@@ -269,7 +269,10 @@ gboolean minesweeper_cell_set_zero(MinesweeperCell* cell, void* data) {
     gboolean* tmp = malloc(sizeof(gboolean));
     tmp[0] = FALSE;
     minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_is_uncoverd, (void*)tmp);
-    cell->show_zero = tmp[0];
+    if (cell->show_zero != tmp[0]) {
+      cell->show_zero = tmp[0];
+      minesweeper_cell_redraw(cell);
+    }
     free(tmp);
   }
   return TRUE;
@@ -283,18 +286,11 @@ static gboolean minesweeper_cell_uncover_unless_flag_wrapper(MinesweeperCell* ce
 
 static gboolean minesweeper_cell_uncover_rel(MinesweeperCell* cell, void* data) {
   if (!cell->state) {
-    cell->show_zero = FALSE;
-    printf("state\n");
-    PRINTDIM(cell->loc);
-    printf("%d %d %d\n", cell->state, cell->rel, cell->abs);
     minesweeper_cell_uncover_unless_flag(cell);
   } else if (cell->show_zero) {
     cell->show_zero = FALSE;
-    minesweeper_cell_redraw(cell);
-    printf("show_zero\n");
-    PRINTDIM(cell->loc);
-    printf("%d %d %d\n", cell->state, cell->rel, cell->abs);
-    minesweeper_cell_uncover_unless_flag(cell);
+    minesweeper_cell_redraw(cell); //don't touch this
+    if (!cell->rel) minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_uncover_unless_flag_wrapper, NULL);
   }
 }
 
@@ -306,11 +302,12 @@ void minesweeper_cell_uncover_unless_flag(MinesweeperCell* cell) {
     } else {
       minesweeper_cell_set_zero(cell, NULL);
     }
-  } else if (cell->state == 1 && cell->field->is_rel && !cell->rel && cell->abs && cell->show_zero) {//i am scared to touch this...
+  } else if (cell->show_zero) {
     minesweeper_cell_set_zero(cell, NULL);
-    if (cell->show_zero) {
+    if (cell->field->is_rel && !cell->rel && cell->abs && cell->show_zero) { //i am touching this...
       minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_uncover_rel, NULL);
     }
+    //minesweeper_cell_redraw(cell); //or this
   }
 }
 
