@@ -307,7 +307,6 @@ void minesweeper_cell_uncover_unless_flag(MinesweeperCell* cell) {
     if (cell->field->is_rel && !cell->rel && cell->abs && cell->show_zero) { //i am touching this...
       minesweeper_field_execute_at_influenced_area(cell->field, cell->loc, minesweeper_cell_uncover_rel, NULL);
     }
-    //minesweeper_cell_redraw(cell); //or this
   }
 }
 
@@ -567,7 +566,6 @@ gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval
           }
           if (field->state == RUNNING) {
             minesweeper_field_execute_at(field, field->loc, minesweeper_cell_uncover_unless_flag_wrapper, NULL);
-            PRINTDIM(field->loc);
           }
           break;
         case GDK_KEY_f:
