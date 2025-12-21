@@ -196,8 +196,8 @@ static void on_activate (GtkApplication *app) {
   g_signal_connect(bombs_entry, "changed", G_CALLBACK(bombs_from_entry), field);
   g_signal_connect(bombs_entry, "activate", G_CALLBACK(grab_focus_wrapper), field);
   gtk_box_append(GTK_BOX(bombs_box), bombs_entry);
-  gtk_entry_set_placeholder_text(GTK_ENTRY(bombs_entry), "10");
-  minesweeper_field_set_tmpbombs(MINESWEEPER_FIELD(field), 10);
+  gtk_entry_set_placeholder_text(GTK_ENTRY(bombs_entry), "20");
+  minesweeper_field_set_tmpbombs(MINESWEEPER_FIELD(field), 20);
   gtk_box_append(GTK_BOX(entry_box), bombs_box);
 
   gtk_box_append(GTK_BOX(settings_box), entry_box);

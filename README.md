@@ -10,9 +10,23 @@ You have an n dimensional field. Your goal is to find every mine in it. The numb
 
 ### Controls
 
+Movement wraps. So if you max out in one dimension, it gets set to 0 and the second next dimension gets incremented.
+
 <pre>
-  Uncover cell:           left click
-  Flag cell:              right click
+  Move right in x:        right arrow, l
+  Move left in x:         left arrow, h
+  Move up in y:           up arrow, k
+  Move down in y:         down arrow, j
+  Move right in z:        d, ctrl-l
+  Move left in z:         a, ctrl-h
+  Move up in q:           w, ctrl-k
+  Move down in q:         s, ctrl-j
+  Mark mine:              m, e, right click
+  Uncover cell:           space, left click
+  Find empty cell:        f (only possible at the start of the game) (if nothing happens, no empty cell was found)
+  Forfeit up:             g
+  Pause game:             p
+  Start new game:         n (creates a new seed based on the current time (looks weird when spamming and doesn't update the seed input))
 </pre>
 
 ## Compiling and running
@@ -43,7 +57,7 @@ And then
 - [x] Toggle between delta and absolute mode
 - [x] Fix random seed button
 - [x] Highlight area of influence
-- [ ] Add pause and forfeit functions
+- [x] Add pause and forfeit functions
 
 ## Special thanks
 

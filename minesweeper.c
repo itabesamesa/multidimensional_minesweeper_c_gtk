@@ -88,6 +88,11 @@ void minesweeper_field_game_running(MinesweeperField* field) {
   field->state = RUNNING;
 }
 
+void minesweeper_field_game_new_game(MinesweeperField* field) {
+  gtk_widget_set_visible(field->overlay, 0);
+  field->state = NEW_GAME;
+}
+
 void minesweeper_field_game_lost(MinesweeperField* field) {
   if (!field->state) {
     gtk_label_set_label(GTK_LABEL(field->overlay), "Game Over\nYou lost");
@@ -106,7 +111,7 @@ void minesweeper_field_game_won(MinesweeperField* field) {
 }
 
 void minesweeper_field_game_forfeit(MinesweeperField* field) {
-  printf("%d\n", field->state);
+  //printf("%d\n", field->state);
   if (!field->state) {
     gtk_label_set_label(GTK_LABEL(field->overlay), "Game Over\nYou forfeit");
     gtk_widget_set_visible(field->overlay, 1);
@@ -115,7 +120,7 @@ void minesweeper_field_game_forfeit(MinesweeperField* field) {
 }
 
 void minesweeper_field_game_paused(MinesweeperField* field) {
-  printf("%d\n", field->state);
+  //printf("%d\n", field->state);
   if (field->state == RUNNING) {
     gtk_label_set_label(GTK_LABEL(field->overlay), "Game Paused");
     gtk_widget_set_visible(field->overlay, 1);
@@ -156,6 +161,21 @@ static void minesweeper_cell_mouse_enter(MinesweeperCell* cell) {
   minesweeper_cell_highlight_influenced_area(cell);
 }
 
+void minesweeper_cell_uncover_unless_flag(MinesweeperCell* cell);
+static gboolean minesweeper_cell_uncover_unless_flag_wrapper(MinesweeperCell* cell, void* data) {
+  minesweeper_cell_uncover_unless_flag(cell);
+  return TRUE;
+}
+
+static void minesweeper_cell_mouse_left_click(MinesweeperCell* cell) {
+  if (cell->field->state == NEW_GAME) cell->field->state = RUNNING; //not changing states causes the program to crash... didn't know that could happen...
+  if (cell->field->state == RUNNING) minesweeper_cell_uncover_unless_flag(cell);
+}
+
+static void minesweeper_cell_mouse_right_click(MinesweeperCell* cell) {
+  if (cell->field->state == RUNNING) minesweeper_cell_flag(cell);
+}
+
 static void minesweeper_cell_init(MinesweeperCell* self) {
 	GtkWidget* widget = GTK_WIDGET(self);
 
@@ -183,10 +203,11 @@ static void minesweeper_cell_init(MinesweeperCell* self) {
   gtk_widget_set_visible(self->flag, 0);
 
   self->show_zero = FALSE;
+  self->loc.len = 0;
 
   GtkGesture* left_click = gtk_gesture_click_new();
   gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(left_click), 1);
-  g_signal_connect_object(left_click, "pressed", G_CALLBACK(minesweeper_cell_uncover_unless_flag), self, G_CONNECT_SWAPPED);
+  g_signal_connect_object(left_click, "pressed", G_CALLBACK(minesweeper_cell_mouse_left_click), self, G_CONNECT_SWAPPED);
   gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(left_click));
 
   GtkGesture* right_click = gtk_gesture_click_new();
@@ -232,12 +253,12 @@ GtkWidget* minesweeper_cell_new(void) {
 
 static gboolean minesweeper_cell_inc_rel(MinesweeperCell* cell, void* data) {
   cell->rel++;
-  return 1;
+  return TRUE;
 }
 
 static gboolean minesweeper_cell_dec_rel(MinesweeperCell* cell, void* data) {
   cell->rel--;
-  return 1;
+  return TRUE;
 }
 
 static void minesweeper_cell_set_display(MinesweeperCell* cell) {
@@ -275,12 +296,6 @@ gboolean minesweeper_cell_set_zero(MinesweeperCell* cell, void* data) {
     }
     free(tmp);
   }
-  return TRUE;
-}
-
-void minesweeper_cell_uncover_unless_flag(MinesweeperCell* cell);
-static gboolean minesweeper_cell_uncover_unless_flag_wrapper(MinesweeperCell* cell, void* data) {
-  minesweeper_cell_uncover_unless_flag(cell);
   return TRUE;
 }
 
@@ -499,6 +514,35 @@ static gboolean minesweeper_cell_unhighlight_influenced_area_wrapper(Minesweeper
   return TRUE;
 }
 
+static gboolean minesweeper_field_inc_loc(MinesweeperField* field, int dim);
+static gboolean minesweeper_field_inc_loc(MinesweeperField* field, int dim) {
+  if (field->loc.len > dim) {
+    if (field->loc.dim[dim]+1 < field->dim.dim[dim]) {
+      field->loc.dim[dim]++;
+    } else {
+      gboolean t = minesweeper_field_inc_loc(field, dim+1);
+      if (t) field->loc.dim[dim] = 0;
+      return t;
+    }
+    return TRUE;
+  }
+  return FALSE;
+}
+
+gboolean minesweeper_cell_is_zero(MinesweeperCell* cell, void* data) {
+  return !cell->abs;
+}
+
+void minesweeper_field_find_free(MinesweeperField* field) {
+  for (int i = 0; i < field->loc.len; i++) field->loc.dim[i] = 0; //just in case
+  do {
+    if (minesweeper_field_execute_at(field, field->loc, minesweeper_cell_is_zero, NULL)) {
+      minesweeper_field_execute_at(field, field->loc, minesweeper_cell_uncover_unless_flag_wrapper, NULL);
+      break;
+    }
+  } while (minesweeper_field_inc_loc(field, 0));
+}
+
 gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType state, gpointer user_data) {
   MinesweeperField* field = (MinesweeperField*)user_data;
   minesweeper_field_execute_at(field, field->loc, minesweeper_cell_unhighlight_influenced_area_wrapper, NULL);
@@ -557,9 +601,9 @@ gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval
         case GDK_KEY_e:
           minesweeper_field_execute_at(field, field->loc, minesweeper_cell_flag_wrapper, NULL);
           break;
-        case GDK_KEY_M:
+        /*case GDK_KEY_M:
         case GDK_KEY_E:
-          break;
+          break;*/
         case GDK_KEY_space:
           if (field->state == NEW_GAME) {
             field->state = RUNNING;
@@ -570,12 +614,14 @@ gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval
           break;
         case GDK_KEY_f:
           if (field->state == NEW_GAME) {
-            printf("do the finding stuff\n");
+            field->state = RUNNING;
+            minesweeper_field_find_free(field);
           }
           break;
-        case GDK_KEY_u:
-          break;
+        /*case GDK_KEY_u: //supposed to change delta mode, but i already have a toggle and i don't want to manipulate it from the field
+          break;*/
         case GDK_KEY_g:
+          minesweeper_field_game_forfeit(field);
           break;
         case GDK_KEY_p:
           if (field->state == RUNNING || field->state == PAUSED) {
@@ -583,13 +629,17 @@ gboolean minesweeper_field_key_pressed(GtkEventControllerKey* self, guint keyval
           }
           break;
         case GDK_KEY_n:
+          field->state = NEW_GAME; //breaks when game state is FORFEIT idk why
+          MTRand r = seedRand(time(NULL));
+          field->tmpseed = genRandLong(&r);
+          minesweeper_field_empty_apply_tmp_generate_populate(field);
           break;
-        case GDK_KEY_c:
+        /*case GDK_KEY_c:
           break;
         case GDK_KEY_i:
           break;
         case GDK_KEY_q:
-          break;
+          break;*/
         default:
           redraw = FALSE;
           break;
@@ -929,7 +979,7 @@ void minesweeper_field_empty(MinesweeperField* field) {
 
 void minesweeper_field_empty_apply_tmp_generate_populate(MinesweeperField* field) {
   minesweeper_field_empty(field);
-  minesweeper_field_game_running(field);
+  minesweeper_field_game_new_game(field);
   minesweeper_field_apply_tmp_generate_populate(field);
 }
 

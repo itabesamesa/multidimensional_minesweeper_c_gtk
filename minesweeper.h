@@ -7,6 +7,7 @@
 
 #include <gtk/gtk.h>
 #include <math.h>
+#include <time.h>
 #include "mtwister.h"
 
 typedef struct _dimension {
